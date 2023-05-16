@@ -1,4 +1,3 @@
-
 export default {
   // TOKENS
   AAVE: {
@@ -92,6 +91,10 @@ export default {
   UNISWAP_ROUTER: {
     1: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
     42: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+  },
+
+  UNISWAP_ROUTER_V3: {
+    1: "0xe592427a0aece92de3edee1f18e0157c05861564",
   },
 
   WETH_DAI_UNI_PAIR: {
@@ -200,7 +203,6 @@ export default {
   WETH_WHALE: "0x2f0b23f53734252bda2277357e97e1517d6b042a",
   WBTC_WHALE: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
   STETH_WHALE: "0xdc24316b9ae028f1497c275eb9192a3ea0f67022",
-
 } as any;
 
 export const DEPENDENCY = {

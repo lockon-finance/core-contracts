@@ -136,3 +136,4 @@ export { YearnWrapV2Adapter } from "../../typechain/YearnWrapV2Adapter";
 export { YearnStrategyMock } from "../../typechain/YearnStrategyMock";
 export { ZeroExApiAdapter } from "../../typechain/ZeroExApiAdapter";
 export { ZeroExMock } from "../../typechain/ZeroExMock";
+export { Pausable } from "../../typechain/Pausable";

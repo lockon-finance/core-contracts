@@ -27,6 +27,7 @@ import { ISetToken } from "../../../interfaces/ISetToken.sol";
 import { ModuleBase } from "../../lib/ModuleBase.sol";
 import { Position } from "../../lib/Position.sol";
 import { PreciseUnitMath } from "../../../lib/PreciseUnitMath.sol";
+import { Pausable } from "../../Pausable.sol";
 
 /**
  * @title BasicIssuanceModule
@@ -35,7 +36,7 @@ import { PreciseUnitMath } from "../../../lib/PreciseUnitMath.sol";
  * Module that enables issuance and redemption functionality on a SetToken. This is a module that is
  * required to bring the totalSupply of a Set above 0.
  */
-contract BasicIssuanceModule is ModuleBase, ReentrancyGuard {
+contract BasicIssuanceModule is ModuleBase, ReentrancyGuard, Pausable {
     using Invoke for ISetToken;
     using Position for ISetToken.Position;
     using Position for ISetToken;
@@ -91,6 +92,7 @@ contract BasicIssuanceModule is ModuleBase, ReentrancyGuard {
         external
         nonReentrant
         onlyValidAndInitializedSet(_setToken)
+        whenNotPaused
     {
         require(_quantity > 0, "Issue quantity must be > 0");
 
