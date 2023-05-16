@@ -98,6 +98,7 @@ describe("SushiSwap TradeModule Integration [ @forked-mainnet ]", () => {
       let subjectAdapterName: string;
       let subjectSetToken: Address;
       let subjectMinDestinationQuantity: BigNumber;
+      let subjectIsCollectFee: boolean;
       let subjectData: Bytes;
       let subjectCaller: Account;
 
@@ -148,6 +149,7 @@ describe("SushiSwap TradeModule Integration [ @forked-mainnet ]", () => {
         subjectSourceQuantity = sourceTokenQuantity;
         subjectSetToken = setToken.address;
         subjectMinDestinationQuantity = destinationTokenQuantity.sub(ether(1)); // Receive a min of 28 WETH for 1 WBTC
+        subjectIsCollectFee = true;
         subjectAdapterName = uniswapAdapterV2Name;
 
         const tradePath = [subjectSourceToken, subjectDestinationToken];
@@ -170,6 +172,7 @@ describe("SushiSwap TradeModule Integration [ @forked-mainnet ]", () => {
           subjectSourceQuantity,
           subjectDestinationToken,
           subjectMinDestinationQuantity,
+          subjectIsCollectFee,
           subjectData
         );
       }

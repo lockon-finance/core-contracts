@@ -128,6 +128,7 @@ describe("AMMSplitterTradeModule", () => {
       let subjectAdapterName: string;
       let subjectSetToken: Address;
       let subjectMinDestinationQuantity: BigNumber;
+      let subjectIsCollectFee: boolean;
       let subjectData: Bytes;
       let subjectCaller: Account;
 
@@ -192,6 +193,7 @@ describe("AMMSplitterTradeModule", () => {
           subjectAdapterName = tradeSplitterAdapterName;
           subjectData = EMPTY_BYTES;
           subjectMinDestinationQuantity = destinationTokenQuantity.sub(ether(1)); // Receive a min of 32 WETH for 1 WBTC
+          subjectIsCollectFee = true;
           subjectCaller = manager;
         });
 
@@ -204,6 +206,7 @@ describe("AMMSplitterTradeModule", () => {
             subjectSourceQuantity,
             subjectDestinationToken,
             subjectMinDestinationQuantity,
+            subjectIsCollectFee,
             subjectData
           );
         }

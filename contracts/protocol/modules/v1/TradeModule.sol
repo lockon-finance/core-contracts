@@ -111,6 +111,7 @@ contract TradeModule is ModuleBase, ReentrancyGuard {
      * @param _sendQuantity         Units of token in SetToken sent to the exchange
      * @param _receiveToken         Address of the token that will be received from the exchange
      * @param _minReceiveQuantity   Min units of token in SetToken to be received from the exchange
+     * @param _isCollectFee         Fee collection switching
      * @param _data                 Arbitrary bytes to be used to construct trade call data
      */
     function trade(
@@ -120,6 +121,7 @@ contract TradeModule is ModuleBase, ReentrancyGuard {
         uint256 _sendQuantity,
         address _receiveToken,
         uint256 _minReceiveQuantity,
+        bool _isCollectFee,
         bytes memory _data
     )
         external
@@ -141,7 +143,7 @@ contract TradeModule is ModuleBase, ReentrancyGuard {
 
         uint256 exchangedQuantity = _validatePostTrade(tradeInfo);
 
-        uint256 protocolFee = _accrueProtocolFee(tradeInfo, exchangedQuantity);
+        uint256 protocolFee = _isCollectFee ?  _accrueProtocolFee(tradeInfo, exchangedQuantity) : 0;
 
         (
             uint256 netSendAmount,
