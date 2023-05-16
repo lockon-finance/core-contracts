@@ -133,6 +133,7 @@ async function main() {
   const destinationTokenQuantity = wbtcRate.mul(sourceTokenQuantity).div(10 ** sourceTokenDecimals);
   const subjectData = EMPTY_BYTES;
   const subjectMinDestinationQuantity = destinationTokenQuantity.sub(ether(0.5)); // Receive a min of 16 WETH for 0.5 WBTC
+  const subjectIsCollectFee = true;
 
   await tradeModule.trade(
     setToken.address,
@@ -141,6 +142,7 @@ async function main() {
     sourceTokenQuantity,
     setup.weth.address,
     subjectMinDestinationQuantity,
+    subjectIsCollectFee,
     subjectData
   );
 
