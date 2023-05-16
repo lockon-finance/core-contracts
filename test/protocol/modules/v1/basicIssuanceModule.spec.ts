@@ -6,10 +6,7 @@ import { Account } from "@utils/test/types";
 import { ADDRESS_ZERO, ZERO, ONE } from "@utils/constants";
 import { BasicIssuanceModule, ManagerIssuanceHookMock, SetToken } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
-import {
-  bitcoin,
-  ether,
-} from "@utils/index";
+import { bitcoin, ether } from "@utils/index";
 import {
   addSnapshotBeforeRestoreAfterEach,
   getAccounts,
@@ -22,7 +19,7 @@ import { SystemFixture } from "@utils/fixtures";
 
 const expect = getWaffleExpect();
 
-describe("BasicIssuanceModule", () => {
+describe("BasicIssuanceModule @forked-mainnet", () => {
   let owner: Account;
   let recipient: Account;
   let deployer: DeployHelper;
@@ -31,10 +28,7 @@ describe("BasicIssuanceModule", () => {
   let issuanceModule: BasicIssuanceModule;
 
   before(async () => {
-    [
-      owner,
-      recipient,
-    ] = await getAccounts();
+    [owner, recipient] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
     setup = getSystemFixture(owner.address);
@@ -56,7 +50,7 @@ describe("BasicIssuanceModule", () => {
       setToken = await setup.createSetToken(
         [setup.weth.address],
         [ether(1)],
-        [issuanceModule.address]
+        [issuanceModule.address],
       );
       subjectSetToken = setToken.address;
       subjectPreIssuanceHook = await getRandomAddress();
@@ -64,10 +58,9 @@ describe("BasicIssuanceModule", () => {
     });
 
     async function subject(): Promise<any> {
-      return issuanceModule.connect(subjectCaller.wallet).initialize(
-        subjectSetToken,
-        subjectPreIssuanceHook,
-      );
+      return issuanceModule
+        .connect(subjectCaller.wallet)
+        .initialize(subjectSetToken, subjectPreIssuanceHook);
     }
 
     it("should enable the Module on the SetToken", async () => {
@@ -100,7 +93,7 @@ describe("BasicIssuanceModule", () => {
         const issuanceModuleNotPendingSetToken = await setup.createSetToken(
           [setup.weth.address],
           [ether(1)],
-          [newModule]
+          [newModule],
         );
 
         subjectSetToken = issuanceModuleNotPendingSetToken.address;
@@ -116,7 +109,7 @@ describe("BasicIssuanceModule", () => {
         const nonEnabledSetToken = await setup.createNonControllerEnabledSetToken(
           [setup.weth.address],
           [ether(1)],
-          [issuanceModule.address]
+          [issuanceModule.address],
         );
 
         subjectSetToken = nonEnabledSetToken.address;
@@ -140,7 +133,9 @@ describe("BasicIssuanceModule", () => {
     }
 
     it("should revert", async () => {
-      await expect(subject()).to.be.revertedWith("The BasicIssuanceModule module cannot be removed");
+      await expect(subject()).to.be.revertedWith(
+        "The BasicIssuanceModule module cannot be removed",
+      );
     });
   });
 
@@ -159,7 +154,7 @@ describe("BasicIssuanceModule", () => {
         setToken = await setup.createSetToken(
           [setup.weth.address, setup.wbtc.address],
           [ether(1), bitcoin(2)],
-          [issuanceModule.address]
+          [issuanceModule.address],
         );
         await issuanceModule.initialize(setToken.address, preIssueHook);
 
@@ -179,119 +174,151 @@ describe("BasicIssuanceModule", () => {
         });
 
         async function subject(): Promise<any> {
-          return issuanceModule.connect(subjectCaller.wallet).issue(
-            subjectSetToken,
-            subjectIssueQuantity,
-            subjectTo.address
-          );
+          return issuanceModule
+            .connect(subjectCaller.wallet)
+            .issue(subjectSetToken, subjectIssueQuantity, subjectTo.address);
         }
 
-        it("should issue the Set to the recipient", async () => {
-          await subject();
-          const issuedBalance = await setToken.balanceOf(recipient.address);
-          expect(issuedBalance).to.eq(subjectIssueQuantity);
-        });
-
-        it("should have deposited the components into the SetToken", async () => {
-          await subject();
-          const depositedWETHBalance = await setup.weth.balanceOf(setToken.address);
-          const expectedBTCBalance = subjectIssueQuantity;
-          expect(depositedWETHBalance).to.eq(expectedBTCBalance);
-
-          const depositedBTCBalance = await setup.wbtc.balanceOf(setToken.address);
-          const expectedBalance = subjectIssueQuantity.mul(bitcoin(2)).div(ether(1));
-          expect(depositedBTCBalance).to.eq(expectedBalance);
-        });
-
-        it("should emit the SetTokenIssued event", async () => {
-          await expect(subject()).to.emit(issuanceModule, "SetTokenIssued").withArgs(
-            subjectSetToken,
-            subjectCaller.address,
-            subjectTo.address,
-            ADDRESS_ZERO,
-            subjectIssueQuantity,
-          );
-        });
-
-        describe("when the issue quantity is extremely small", async () => {
-          beforeEach(async () => {
-            subjectIssueQuantity = ONE;
+        context("when not paused", async () => {
+          it("should issue the Set to the recipient", async () => {
+            await subject();
+            const issuedBalance = await setToken.balanceOf(recipient.address);
+            expect(issuedBalance).to.eq(subjectIssueQuantity);
           });
 
-          it("should transfer the minimal units of components to the SetToken", async () => {
+          it("should have deposited the components into the SetToken", async () => {
             await subject();
             const depositedWETHBalance = await setup.weth.balanceOf(setToken.address);
-            const expectedWETHBalance = ONE;
-            expect(depositedWETHBalance).to.eq(expectedWETHBalance);
+            const expectedBTCBalance = subjectIssueQuantity;
+            expect(depositedWETHBalance).to.eq(expectedBTCBalance);
 
             const depositedBTCBalance = await setup.wbtc.balanceOf(setToken.address);
-            const expectedBTCBalance = ONE;
-            expect(depositedBTCBalance).to.eq(expectedBTCBalance);
+            const expectedBalance = subjectIssueQuantity.mul(bitcoin(2)).div(ether(1));
+            expect(depositedBTCBalance).to.eq(expectedBalance);
+          });
+
+          it("should emit the SetTokenIssued event", async () => {
+            await expect(subject())
+              .to.emit(issuanceModule, "SetTokenIssued")
+              .withArgs(
+                subjectSetToken,
+                subjectCaller.address,
+                subjectTo.address,
+                ADDRESS_ZERO,
+                subjectIssueQuantity,
+              );
+          });
+
+          describe("when the issue quantity is extremely small", async () => {
+            beforeEach(async () => {
+              subjectIssueQuantity = ONE;
+            });
+
+            it("should transfer the minimal units of components to the SetToken", async () => {
+              await subject();
+              const depositedWETHBalance = await setup.weth.balanceOf(setToken.address);
+              const expectedWETHBalance = ONE;
+              expect(depositedWETHBalance).to.eq(expectedWETHBalance);
+
+              const depositedBTCBalance = await setup.wbtc.balanceOf(setToken.address);
+              const expectedBTCBalance = ONE;
+              expect(depositedBTCBalance).to.eq(expectedBTCBalance);
+            });
+          });
+
+          describe("when a SetToken position is not in default state", async () => {
+            beforeEach(async () => {
+              // Add self as module and update the position state
+              await setup.controller.addModule(owner.address);
+              await setToken.addModule(owner.address);
+              await setToken.initializeModule();
+
+              const retrievedPosition = (await setToken.getPositions())[0];
+
+              await setToken.addExternalPositionModule(
+                retrievedPosition.component,
+                retrievedPosition.module,
+              );
+              await setToken.editExternalPositionUnit(
+                retrievedPosition.component,
+                retrievedPosition.module,
+                retrievedPosition.unit,
+              );
+            });
+
+            it("should revert", async () => {
+              await expect(subject()).to.be.revertedWith("Only default positions are supported");
+            });
+          });
+
+          describe("when one of the components has a recipient-related fee", async () => {
+            beforeEach(async () => {
+              // Add self as module and update the position state
+              await setup.controller.addModule(owner.address);
+              await setToken.addModule(owner.address);
+              await setToken.initializeModule();
+
+              const tokenWithFee = await deployer.mocks.deployTokenWithFeeMock(
+                owner.address,
+                ether(20),
+                ether(0.1),
+              );
+              await tokenWithFee.approve(issuanceModule.address, ether(100));
+
+              const retrievedPosition = (await setToken.getPositions())[0];
+
+              await setToken.addComponent(tokenWithFee.address);
+              await setToken.editDefaultPositionUnit(tokenWithFee.address, retrievedPosition.unit);
+            });
+
+            it("should revert", async () => {
+              await expect(subject()).to.be.revertedWith("Invalid post transfer balance");
+            });
+          });
+
+          describe("when the issue quantity is 0", async () => {
+            beforeEach(async () => {
+              subjectIssueQuantity = ZERO;
+            });
+
+            it("should revert", async () => {
+              await expect(subject()).to.be.revertedWith("Issue quantity must be > 0");
+            });
+          });
+
+          describe("when the SetToken is not enabled on the controller", async () => {
+            beforeEach(async () => {
+              const nonEnabledSetToken = await setup.createNonControllerEnabledSetToken(
+                [setup.weth.address],
+                [ether(1)],
+                [issuanceModule.address],
+              );
+
+              subjectSetToken = nonEnabledSetToken.address;
+            });
+
+            it("should revert", async () => {
+              await expect(subject()).to.be.revertedWith(
+                "Must be a valid and initialized SetToken",
+              );
+            });
           });
         });
 
-        describe("when a SetToken position is not in default state", async () => {
-          beforeEach(async () => {
-            // Add self as module and update the position state
-            await setup.controller.addModule(owner.address);
-            await setToken.addModule(owner.address);
-            await setToken.initializeModule();
-
-            const retrievedPosition = (await setToken.getPositions())[0];
-
-            await setToken.addExternalPositionModule(retrievedPosition.component, retrievedPosition.module);
-            await setToken.editExternalPositionUnit(retrievedPosition.component, retrievedPosition.module, retrievedPosition.unit);
-          });
-
+        context("when paused", async () => {
           it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Only default positions are supported");
+            await issuanceModule.connect(subjectCaller.wallet).pause();
+            await expect(subject()).to.be.revertedWith("Pausable: paused");
           });
         });
 
-        describe("when one of the components has a recipient-related fee", async () => {
-          beforeEach(async () => {
-            // Add self as module and update the position state
-            await setup.controller.addModule(owner.address);
-            await setToken.addModule(owner.address);
-            await setToken.initializeModule();
-
-            const tokenWithFee = await deployer.mocks.deployTokenWithFeeMock(owner.address, ether(20), ether(0.1));
-            await tokenWithFee.approve(issuanceModule.address, ether(100));
-
-            const retrievedPosition = (await setToken.getPositions())[0];
-
-            await setToken.addComponent(tokenWithFee.address);
-            await setToken.editDefaultPositionUnit(tokenWithFee.address, retrievedPosition.unit);
-          });
-
-          it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Invalid post transfer balance");
-          });
-        });
-
-        describe("when the issue quantity is 0", async () => {
-          beforeEach(async () => {
-            subjectIssueQuantity = ZERO;
-          });
-
-          it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Issue quantity must be > 0");
-          });
-        });
-
-        describe("when the SetToken is not enabled on the controller", async () => {
-          beforeEach(async () => {
-            const nonEnabledSetToken = await setup.createNonControllerEnabledSetToken(
-              [setup.weth.address],
-              [ether(1)],
-              [issuanceModule.address]
-            );
-
-            subjectSetToken = nonEnabledSetToken.address;
-          });
-
-          it("should revert", async () => {
-            await expect(subject()).to.be.revertedWith("Must be a valid and initialized SetToken");
+        context("When paused once and unpaused", async () => {
+          it("should issue the Set to the recipient", async () => {
+            await issuanceModule.connect(subjectCaller.wallet).pause();
+            await issuanceModule.connect(subjectCaller.wallet).unpause();
+            await subject();
+            const issuedBalance = await setToken.balanceOf(recipient.address);
+            expect(issuedBalance).to.eq(subjectIssueQuantity);
           });
         });
       });
@@ -309,27 +336,55 @@ describe("BasicIssuanceModule", () => {
           return issuanceModule.issue(subjectSetToken, subjectIssueQuantity, subjectTo.address);
         }
 
-        it("should properly call the pre-issue hooks", async () => {
-          await subject();
-          const retrievedSetToken = await issuanceHookContract.retrievedSetToken();
-          const retrievedIssueQuantity = await issuanceHookContract.retrievedIssueQuantity();
-          const retrievedSender = await issuanceHookContract.retrievedSender();
-          const retrievedTo = await issuanceHookContract.retrievedTo();
+        context("when not paused", async () => {
+          it("should properly call the pre-issue hooks", async () => {
+            await subject();
+            const retrievedSetToken = await issuanceHookContract.retrievedSetToken();
+            const retrievedIssueQuantity = await issuanceHookContract.retrievedIssueQuantity();
+            const retrievedSender = await issuanceHookContract.retrievedSender();
+            const retrievedTo = await issuanceHookContract.retrievedTo();
 
-          expect(retrievedSetToken).to.eq(subjectSetToken);
-          expect(retrievedIssueQuantity).to.eq(subjectIssueQuantity);
-          expect(retrievedSender).to.eq(owner.address);
-          expect(retrievedTo).to.eq(subjectTo.address);
+            expect(retrievedSetToken).to.eq(subjectSetToken);
+            expect(retrievedIssueQuantity).to.eq(subjectIssueQuantity);
+            expect(retrievedSender).to.eq(owner.address);
+            expect(retrievedTo).to.eq(subjectTo.address);
+          });
+
+          it("should emit the SetTokenIssued event", async () => {
+            await expect(subject())
+              .to.emit(issuanceModule, "SetTokenIssued")
+              .withArgs(
+                subjectSetToken,
+                subjectCaller.address,
+                subjectTo.address,
+                issuanceHookContract.address,
+                subjectIssueQuantity,
+              );
+          });
         });
 
-        it("should emit the SetTokenIssued event", async () => {
-          await expect(subject()).to.emit(issuanceModule, "SetTokenIssued").withArgs(
-            subjectSetToken,
-            subjectCaller.address,
-            subjectTo.address,
-            issuanceHookContract.address,
-            subjectIssueQuantity,
-          );
+        context("when paused", async () => {
+          it("should revert", async () => {
+            await issuanceModule.connect(subjectCaller.wallet).pause();
+            await expect(subject()).to.be.revertedWith("Pausable: paused");
+          });
+        });
+
+        context("When paused once and unpaused", async () => {
+          it("should properly call the pre-issue hooks", async () => {
+            await issuanceModule.connect(subjectCaller.wallet).pause();
+            await issuanceModule.connect(subjectCaller.wallet).unpause();
+            await subject();
+            const retrievedSetToken = await issuanceHookContract.retrievedSetToken();
+            const retrievedIssueQuantity = await issuanceHookContract.retrievedIssueQuantity();
+            const retrievedSender = await issuanceHookContract.retrievedSender();
+            const retrievedTo = await issuanceHookContract.retrievedTo();
+
+            expect(retrievedSetToken).to.eq(subjectSetToken);
+            expect(retrievedIssueQuantity).to.eq(subjectIssueQuantity);
+            expect(retrievedSender).to.eq(owner.address);
+            expect(retrievedTo).to.eq(subjectTo.address);
+          });
         });
       });
     });
@@ -352,7 +407,7 @@ describe("BasicIssuanceModule", () => {
         setToken = await setup.createSetToken(
           [setup.weth.address, setup.wbtc.address],
           [ether(1), bitcoin(2)],
-          [issuanceModule.address]
+          [issuanceModule.address],
         );
         await issuanceModule.initialize(setToken.address, preIssueHook);
 
@@ -370,7 +425,9 @@ describe("BasicIssuanceModule", () => {
       });
 
       async function subject(): Promise<any> {
-        return issuanceModule.connect(subjectCaller.wallet).redeem(subjectSetToken, subjectRedeemQuantity, subjectTo);
+        return issuanceModule
+          .connect(subjectCaller.wallet)
+          .redeem(subjectSetToken, subjectRedeemQuantity, subjectTo);
       }
 
       it("should redeem the Set", async () => {
@@ -389,7 +446,9 @@ describe("BasicIssuanceModule", () => {
         expect(afterWETHBalance).to.eq(expectedBTCBalance);
 
         const afterBTCBalance = await setup.wbtc.balanceOf(recipient.address);
-        const expectedBalance = beforeBTCBalance.add(subjectRedeemQuantity.mul(bitcoin(2)).div(ether(1)));
+        const expectedBalance = beforeBTCBalance.add(
+          subjectRedeemQuantity.mul(bitcoin(2)).div(ether(1)),
+        );
         expect(afterBTCBalance).to.eq(expectedBalance);
       });
 
@@ -403,17 +462,16 @@ describe("BasicIssuanceModule", () => {
         expect(afterWETHBalance).to.eq(expectedBTCBalance);
 
         const afterBTCBalance = await setup.wbtc.balanceOf(setToken.address);
-        const expectedBalance = beforeBTCBalance.sub(subjectRedeemQuantity.mul(bitcoin(2)).div(ether(1)));
+        const expectedBalance = beforeBTCBalance.sub(
+          subjectRedeemQuantity.mul(bitcoin(2)).div(ether(1)),
+        );
         expect(afterBTCBalance).to.eq(expectedBalance);
       });
 
       it("should emit the SetTokenRedeemed event", async () => {
-        await expect(subject()).to.emit(issuanceModule, "SetTokenRedeemed").withArgs(
-          subjectSetToken,
-          subjectCaller.address,
-          subjectTo,
-          subjectRedeemQuantity
-        );
+        await expect(subject())
+          .to.emit(issuanceModule, "SetTokenRedeemed")
+          .withArgs(subjectSetToken, subjectCaller.address, subjectTo, subjectRedeemQuantity);
       });
 
       describe("when the issue quantity is extremely small", async () => {
@@ -448,7 +506,11 @@ describe("BasicIssuanceModule", () => {
           await setToken.addModule(owner.address);
           await setToken.initializeModule();
 
-          const tokenWithFee = await deployer.mocks.deployTokenWithFeeMock(setToken.address, ether(20), ether(0.1));
+          const tokenWithFee = await deployer.mocks.deployTokenWithFeeMock(
+            setToken.address,
+            ether(20),
+            ether(0.1),
+          );
 
           const retrievedPosition = (await setToken.getPositions())[0];
 
@@ -470,8 +532,15 @@ describe("BasicIssuanceModule", () => {
 
           const retrievedPosition = (await setToken.getPositions())[0];
 
-          await setToken.addExternalPositionModule(retrievedPosition.component, retrievedPosition.module);
-          await setToken.editExternalPositionUnit(retrievedPosition.component, retrievedPosition.module, retrievedPosition.unit);
+          await setToken.addExternalPositionModule(
+            retrievedPosition.component,
+            retrievedPosition.module,
+          );
+          await setToken.editExternalPositionUnit(
+            retrievedPosition.component,
+            retrievedPosition.module,
+            retrievedPosition.unit,
+          );
         });
 
         it("should revert", async () => {
@@ -494,7 +563,7 @@ describe("BasicIssuanceModule", () => {
           const nonEnabledSetToken = await setup.createNonControllerEnabledSetToken(
             [setup.weth.address],
             [ether(1)],
-            [issuanceModule.address]
+            [issuanceModule.address],
           );
 
           subjectSetToken = nonEnabledSetToken.address;
@@ -502,6 +571,93 @@ describe("BasicIssuanceModule", () => {
 
         it("should revert", async () => {
           await expect(subject()).to.be.revertedWith("Must be a valid and initialized SetToken");
+        });
+      });
+    });
+  });
+
+  describe("#pause", async () => {
+    context("When the owner", async () => {
+      context("When not paused", async () => {
+        it("should paused status be true", async () => {
+          expect(await issuanceModule.paused()).to.eq(false);
+          await issuanceModule.connect(owner.wallet).pause();
+          expect(await issuanceModule.paused()).to.eq(true);
+        });
+      });
+
+      context("When paused", async () => {
+        it("should revert", async () => {
+          await issuanceModule.connect(owner.wallet).pause();
+          expect(await issuanceModule.paused()).to.eq(true);
+          await expect(issuanceModule.connect(owner.wallet).pause()).to.be.revertedWith(
+            "Pausable: paused",
+          );
+        });
+      });
+    });
+
+    context("When the wrong owner", async () => {
+      context("When not paused", async () => {
+        it("should revert", async () => {
+          expect(await issuanceModule.paused()).to.eq(false);
+          await expect(issuanceModule.connect(recipient.wallet).pause()).to.be.revertedWith(
+            "Ownable: caller is not the owner",
+          );
+        });
+      });
+
+      context("When paused", async () => {
+        it("should revert", async () => {
+          await issuanceModule.connect(owner.wallet).pause();
+          expect(await issuanceModule.paused()).to.eq(true);
+          await expect(issuanceModule.connect(recipient.wallet).pause()).to.be.revertedWith(
+            "Ownable: caller is not the owner",
+          );
+        });
+      });
+    });
+  });
+
+  describe("#unpause", async () => {
+    context("When the owner", async () => {
+      context("When not paused", async () => {
+        it("should revert", async () => {
+          expect(await issuanceModule.paused()).to.eq(false);
+          await expect(issuanceModule.connect(owner.wallet).unpause()).to.be.revertedWith(
+            "Pausable: not paused",
+          );
+        });
+      });
+
+      context("When paused", async () => {
+        it("should paused status be false", async () => {
+          await issuanceModule.connect(owner.wallet).pause();
+          expect(await issuanceModule.paused()).to.eq(true);
+          await issuanceModule.connect(owner.wallet).unpause();
+          expect(await issuanceModule.paused()).to.eq(false);
+        });
+      });
+    });
+
+    context("When the wrong owner", async () => {
+      context("When not paused", async () => {
+        it("should revert", async () => {
+          expect(await issuanceModule.paused()).to.eq(false);
+          await expect(issuanceModule.connect(recipient.wallet).unpause()).to.be.revertedWith(
+            "Ownable: caller is not the owner",
+          );
+        });
+      });
+
+      context("When paused", async () => {
+        it("should revert", async () => {
+          await issuanceModule.connect(owner.wallet).pause();
+          expect(await issuanceModule.paused()).to.eq(true);
+          await issuanceModule.connect(owner.wallet).unpause();
+          await expect(issuanceModule.connect(recipient.wallet).unpause()).to.be.revertedWith(
+            "Ownable: caller is not the owner",
+          );
         });
       });
     });

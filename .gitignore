@@ -5,11 +5,6 @@
 /dist
 /etherscan
 /flatten
-/deployments/kovan
-/deployments/localhost_31337
-/deployments/staging_mainnet_1
-/deployments/production_1
-/deployments/50-development.json
 /node_modules
 /transpiled
 /types/generated/*
@@ -18,9 +13,9 @@ coverage.json
 coverage/
 .env
 .releaserc.json
-
 /.coverage_cache
 /.coverage_contracts
+/deployments
 
 ### Node ###
 
