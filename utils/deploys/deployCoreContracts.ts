@@ -6,7 +6,8 @@ import {
   PriceOracle,
   SetToken,
   SetTokenCreator,
-  SetValuer
+  SetValuer,
+  Operator
 } from "./../contracts";
 
 import { Address } from "./../types";
@@ -17,6 +18,7 @@ import { PriceOracle__factory } from "../../typechain/factories/PriceOracle__fac
 import { SetToken__factory } from "../../typechain/factories/SetToken__factory";
 import { SetTokenCreator__factory } from "../../typechain/factories/SetTokenCreator__factory";
 import { SetValuer__factory } from "../../typechain/factories/SetValuer__factory";
+import { Operator__factory } from "../../typechain/factories/Operator__factory";
 
 export default class DeployCoreContracts {
   private _deployerSigner: Signer;
@@ -97,5 +99,9 @@ export default class DeployCoreContracts {
 
   public async deploySetValuer(controller: Address): Promise<SetValuer> {
     return await new SetValuer__factory(this._deployerSigner).deploy(controller);
+  }
+
+  public async deployOperator(): Promise<Operator> {
+    return await new Operator__factory(this._deployerSigner).deploy();
   }
 }

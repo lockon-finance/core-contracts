@@ -36,6 +36,7 @@ const expect = getWaffleExpect();
 describe("UniswapExchangeV2 TradeModule Integration [ @forked-mainnet ]", () => {
   let owner: Account;
   let manager: Account;
+  let operator: Account;
 
   let deployer: DeployHelper;
 
@@ -53,6 +54,7 @@ describe("UniswapExchangeV2 TradeModule Integration [ @forked-mainnet ]", () => 
     [
       owner,
       manager,
+      operator,
     ] = await getAccounts();
 
 
@@ -68,7 +70,7 @@ describe("UniswapExchangeV2 TradeModule Integration [ @forked-mainnet ]", () => 
     uniswapExchangeAdapterV2 = await deployer.adapters.deployUniswapV2ExchangeAdapterV2(uniswapRouter.address);
     uniswapAdapterV2Name = "UNISWAPV2";
 
-    tradeModule = await deployer.modules.deployTradeModule(setup.controller.address);
+    tradeModule = await deployer.modules.deployTradeModule(setup.controller.address, operator.address);
     await setup.controller.addModule(tradeModule.address);
 
     await setup.integrationRegistry.addIntegration(

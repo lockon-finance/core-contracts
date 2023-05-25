@@ -96,8 +96,8 @@ export default class DeployModules {
     return await new AirdropModule__factory(this._deployerSigner).deploy(controller);
   }
 
-  public async deployTradeModule(controller: Address): Promise<TradeModule> {
-    return await new TradeModule__factory(this._deployerSigner).deploy(controller);
+  public async deployTradeModule(controller: Address, operator: Address): Promise<TradeModule> {
+    return await new TradeModule__factory(this._deployerSigner).deploy(controller, operator);
   }
 
   public async deployWrapModule(controller: Address, weth: Address): Promise<WrapModule> {
