@@ -29,7 +29,7 @@ import { IExchangeAdapter } from "../../../interfaces/IExchangeAdapter.sol";
 import { IIntegrationRegistry } from "../../../interfaces/IIntegrationRegistry.sol";
 import { Invoke } from "../../lib/Invoke.sol";
 import { ISetToken } from "../../../interfaces/ISetToken.sol";
-import { ModuleBase } from "../../lib/ModuleBase.sol";
+import { ExtendModuleBase } from "../../lib/ExtendModuleBase.sol";
 import { Position } from "../../lib/Position.sol";
 import { PreciseUnitMath } from "../../../lib/PreciseUnitMath.sol";
 
@@ -40,7 +40,7 @@ import { PreciseUnitMath } from "../../../lib/PreciseUnitMath.sol";
  * Module that enables SetTokens to perform atomic trades using Decentralized Exchanges
  * such as 1inch or Kyber. Integrations mappings are stored on the IntegrationRegistry contract.
  */
-contract TradeModule is ModuleBase, ReentrancyGuard {
+contract TradeModule is ExtendModuleBase, ReentrancyGuard {
     using SafeCast for int256;
     using SafeMath for uint256;
 
@@ -81,7 +81,9 @@ contract TradeModule is ModuleBase, ReentrancyGuard {
 
     /* ============ Constructor ============ */
 
-    constructor(IController _controller) public ModuleBase(_controller) {}
+    constructor(IController _controller, address _operator) public ExtendModuleBase(_controller) {
+        super.addOperator(_operator);
+    }
 
     /* ============ External Functions ============ */
 
@@ -126,7 +128,7 @@ contract TradeModule is ModuleBase, ReentrancyGuard {
     )
         external
         nonReentrant
-        onlyManagerAndValidSet(_setToken)
+        onlyManagerOrOperatorAndValidSet(_setToken)
     {
         TradeInfo memory tradeInfo = _createTradeInfo(
             _setToken,

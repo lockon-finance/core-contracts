@@ -5,7 +5,7 @@ import dependencies from "../utils/deploys/dependencies";
 
 const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
   const { getNamedAccounts, getChainId, ethers } = hre;
-  const { deployer } = await getNamedAccounts();
+  const { deployer, operator } = await getNamedAccounts();
   const chainId = process.env.FORK ? 1 : parseInt(await getChainId(), 10);
   const startBalance = await ethers.provider.getBalance((await ethers.getSigners())[0].address);
 
@@ -47,7 +47,7 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
 
   const deployedTradeModule = await deployAndLog("TradeModule", {
     from: deployer,
-    args: [deployedController.address],
+    args: [deployedController.address, operator],
     skipIfAlreadyDeployed: true,
   });
 

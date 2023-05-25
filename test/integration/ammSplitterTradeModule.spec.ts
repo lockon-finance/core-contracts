@@ -34,6 +34,7 @@ const expect = getWaffleExpect();
 describe("AMMSplitterTradeModule", () => {
   let owner: Account;
   let manager: Account;
+  let operator: Account;
 
   let deployer: DeployHelper;
 
@@ -51,6 +52,7 @@ describe("AMMSplitterTradeModule", () => {
     [
       owner,
       manager,
+      operator,
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -85,7 +87,7 @@ describe("AMMSplitterTradeModule", () => {
     tradeSplitterExchangeAdapter = await deployer.adapters.deployUniswapV2ExchangeAdapter(tradeSplitter.address);
     tradeSplitterAdapterName = "TRADESPLITTER";
 
-    tradeModule = await deployer.modules.deployTradeModule(setup.controller.address);
+    tradeModule = await deployer.modules.deployTradeModule(setup.controller.address, operator.address);
     await setup.controller.addModule(tradeModule.address);
 
     await setup.integrationRegistry.addIntegration(

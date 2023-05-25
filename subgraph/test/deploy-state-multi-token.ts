@@ -35,7 +35,7 @@ async function main() {
 
   console.log("Starting deployment");
 
-  const [owner, manager1, manager2, manager3] = await getAccounts();
+  const [owner, manager1, manager2, manager3, operator] = await getAccounts();
 
   const wbtcRate = ether(33); // 1 WBTC = 33 ETH
   const wbtcUnits = BigNumber.from(100000000); // 1 WBTC in base units 1 * 10 ** 8
@@ -50,7 +50,7 @@ async function main() {
   await setup.controller.addModule(streamingFeeModule.address);
 
   // TradeModule Deployment
-  let tradeModule = await deployer.modules.deployTradeModule(setup.controller.address);
+  let tradeModule = await deployer.modules.deployTradeModule(setup.controller.address, operator.address);
   await setup.controller.addModule(tradeModule.address);
 
   // Deploy Mock Kyber reserve. Only allows trading from/to WETH
