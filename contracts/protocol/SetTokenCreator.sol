@@ -22,6 +22,7 @@ pragma experimental "ABIEncoderV2";
 import { IController } from "../interfaces/IController.sol";
 import { SetToken } from "./SetToken.sol";
 import { AddressArrayUtils } from "../lib/AddressArrayUtils.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title SetTokenCreator
@@ -30,7 +31,7 @@ import { AddressArrayUtils } from "../lib/AddressArrayUtils.sol";
  * SetTokenCreator is a smart contract used to deploy new SetToken contracts. The SetTokenCreator
  * is a Factory contract that is enabled by the controller to create and register new SetTokens.
  */
-contract SetTokenCreator {
+contract SetTokenCreator is Ownable {
     using AddressArrayUtils for address[];
 
     /* ============ Events ============ */
@@ -72,6 +73,7 @@ contract SetTokenCreator {
         string memory _symbol
     )
         external
+        onlyOwner
         returns (address)
     {
         require(_components.length > 0, "Must have at least 1 component");
@@ -108,4 +110,3 @@ contract SetTokenCreator {
         return address(setToken);
     }
 }
-

@@ -20,10 +20,11 @@ import {
 const expect = getWaffleExpect();
 const protocolUtils = getProtocolUtils();
 
-describe("SetTokenCreator", () => {
+describe("SetTokenCreator [ @forked-mainnet ]", () => {
   let owner: Account;
   let manager: Account;
   let controllerAddress: Account;
+  let bob: Account;
 
   let deployer: DeployHelper;
 
@@ -32,6 +33,7 @@ describe("SetTokenCreator", () => {
       owner,
       manager,
       controllerAddress,
+      bob,
     ] = await getAccounts();
 
     deployer = new DeployHelper(owner.wallet);
@@ -101,7 +103,8 @@ describe("SetTokenCreator", () => {
         subjectSymbol = "SET";
       });
 
-      async function subject(): Promise<any> {
+      async function subjectByOwner(): Promise<any> {
+        setTokenCreator = setTokenCreator.connect(owner.wallet);
         return setTokenCreator.create(
           subjectComponents,
           subjectUnits,
@@ -112,112 +115,132 @@ describe("SetTokenCreator", () => {
         );
       }
 
-      it("should properly create the Set", async () => {
-        const receipt = await subject();
-
-        const address = await protocolUtils.getCreatedSetTokenAddress(receipt.hash);
-        expect(address).to.be.properAddress;
-      });
-
-      it("should enable the Set on the controller", async () => {
-        const receipt = await subject();
-
-        const retrievedSetAddress = await protocolUtils.getCreatedSetTokenAddress(receipt.hash);
-        const isSetEnabled = await controller.isSet(retrievedSetAddress);
-        expect(isSetEnabled).to.eq(true);
-      });
-
-      it("should emit the correct SetTokenCreated event", async () => {
-        const subjectPromise = subject();
-        const retrievedSetAddress = await protocolUtils.getCreatedSetTokenAddress((await subjectPromise).hash);
-
-        await expect(subjectPromise).to.emit(setTokenCreator, "SetTokenCreated").withArgs(
-          retrievedSetAddress,
+      async function subjectByNotOwner(): Promise<any> {
+        setTokenCreator = setTokenCreator.connect(bob.wallet);
+        return setTokenCreator.create(
+          subjectComponents,
+          subjectUnits,
+          subjectModules,
           subjectManager,
           subjectName,
-          subjectSymbol
+          subjectSymbol,
         );
+      }
+
+      describe("When the caller is the owner", async () => {
+        it("should properly create the Set", async () => {
+          const receipt = await subjectByOwner();
+
+          const address = await protocolUtils.getCreatedSetTokenAddress(receipt.hash);
+          expect(address).to.be.properAddress;
+        });
+
+        it("should enable the Set on the controller", async () => {
+          const receipt = await subjectByOwner();
+
+          const retrievedSetAddress = await protocolUtils.getCreatedSetTokenAddress(receipt.hash);
+          const isSetEnabled = await controller.isSet(retrievedSetAddress);
+          expect(isSetEnabled).to.eq(true);
+        });
+
+        it("should emit the correct SetTokenCreated event", async () => {
+          const subjectPromise = subjectByOwner();
+          const retrievedSetAddress = await protocolUtils.getCreatedSetTokenAddress((await subjectPromise).hash);
+
+          await expect(subjectPromise).to.emit(setTokenCreator, "SetTokenCreated").withArgs(
+            retrievedSetAddress,
+            subjectManager,
+            subjectName,
+            subjectSymbol
+          );
+        });
+
+        describe("when no components are passed in", async () => {
+          beforeEach(async () => {
+            subjectComponents = [];
+          });
+
+          it("should revert", async () => {
+            await expect(subjectByOwner()).to.be.revertedWith("Must have at least 1 component");
+          });
+        });
+
+        describe("when no components have a duplicate", async () => {
+          beforeEach(async () => {
+            subjectComponents = [firstComponent.address, firstComponent.address];
+          });
+
+          it("should revert", async () => {
+            await expect(subjectByOwner()).to.be.revertedWith("Components must not have a duplicate");
+          });
+        });
+
+        describe("when the component and units arrays are not the same length", async () => {
+          beforeEach(async () => {
+            subjectUnits = [ether(1)];
+          });
+
+          it("should revert", async () => {
+            await expect(subjectByOwner()).to.be.revertedWith("Component and unit lengths must be the same");
+          });
+        });
+
+        describe("when a module is not approved by the Controller", async () => {
+          beforeEach(async () => {
+            const invalidModuleAddress = await getRandomAddress();
+
+            subjectModules = [firstModule, invalidModuleAddress];
+          });
+
+          it("should revert", async () => {
+            await expect(subjectByOwner()).to.be.revertedWith("Must be enabled module");
+          });
+        });
+
+        describe("when no modules are passed in", async () => {
+          beforeEach(async () => {
+            subjectModules = [];
+          });
+
+          it("should revert", async () => {
+            await expect(subjectByOwner()).to.be.revertedWith("Must have at least 1 module");
+          });
+        });
+
+        describe("when the manager is a null address", async () => {
+          beforeEach(async () => {
+            subjectManager = ADDRESS_ZERO;
+          });
+
+          it("should revert", async () => {
+            await expect(subjectByOwner()).to.be.revertedWith("Manager must not be empty");
+          });
+        });
+
+        describe("when a component is a null address", async () => {
+          beforeEach(async () => {
+            subjectComponents = [firstComponent.address, ADDRESS_ZERO];
+          });
+
+          it("should revert", async () => {
+            await expect(subjectByOwner()).to.be.revertedWith("Component must not be null address");
+          });
+        });
+
+        describe("when a unit is 0", async () => {
+          beforeEach(async () => {
+            subjectUnits = [ONE, ZERO];
+          });
+
+          it("should revert", async () => {
+            await expect(subjectByOwner()).to.be.revertedWith("Units must be greater than 0");
+          });
+        });
       });
 
-      describe("when no components are passed in", async () => {
-        beforeEach(async () => {
-          subjectComponents = [];
-        });
-
+      describe("When the caller is not the owner", async () => {
         it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Must have at least 1 component");
-        });
-      });
-
-      describe("when no components have a duplicate", async () => {
-        beforeEach(async () => {
-          subjectComponents = [firstComponent.address, firstComponent.address];
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Components must not have a duplicate");
-        });
-      });
-
-      describe("when the component and units arrays are not the same length", async () => {
-        beforeEach(async () => {
-          subjectUnits = [ether(1)];
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Component and unit lengths must be the same");
-        });
-      });
-
-      describe("when a module is not approved by the Controller", async () => {
-        beforeEach(async () => {
-          const invalidModuleAddress = await getRandomAddress();
-
-          subjectModules = [firstModule, invalidModuleAddress];
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Must be enabled module");
-        });
-      });
-
-      describe("when no modules are passed in", async () => {
-        beforeEach(async () => {
-          subjectModules = [];
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Must have at least 1 module");
-        });
-      });
-
-      describe("when the manager is a null address", async () => {
-        beforeEach(async () => {
-          subjectManager = ADDRESS_ZERO;
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Manager must not be empty");
-        });
-      });
-
-      describe("when a component is a null address", async () => {
-        beforeEach(async () => {
-          subjectComponents = [firstComponent.address, ADDRESS_ZERO];
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Component must not be null address");
-        });
-      });
-
-      describe("when a unit is 0", async () => {
-        beforeEach(async () => {
-          subjectUnits = [ONE, ZERO];
-        });
-
-        it("should revert", async () => {
-          await expect(subject()).to.be.revertedWith("Units must be greater than 0");
+          await expect(subjectByNotOwner()).to.be.revertedWith("Ownable: caller is not the owner");
         });
       });
     });
