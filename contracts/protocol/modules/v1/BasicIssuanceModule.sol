@@ -65,6 +65,11 @@ contract BasicIssuanceModule is ModuleBase, ReentrancyGuard, Pausable {
     // Mapping of SetToken to Issuance hook configurations
     mapping(ISetToken => IManagerIssuanceHook) public managerIssuanceHook;
 
+    /* ============ Constants ============ */
+
+    // 0 index stores the % of fees charged by redeem.
+    uint256 constant internal BASIC_ISSUANCE_MODULE_REDEEM_FEE_INDEX = 0;
+
     /* ============ Constructor ============ */
 
     /**
@@ -152,6 +157,8 @@ contract BasicIssuanceModule is ModuleBase, ReentrancyGuard, Pausable {
 
             // Use preciseMul to round down to ensure overcollateration when small redeem quantities are provided
             uint256 componentQuantity = _quantity.preciseMul(unit);
+
+            _accrueProtocolFee(_setToken, component, componentQuantity);
 
             // Instruct the SetToken to transfer the component to the user
             _setToken.strictInvokeTransfer(
@@ -246,5 +253,15 @@ contract BasicIssuanceModule is ModuleBase, ReentrancyGuard, Pausable {
         }
 
         return address(0);
+    }
+
+    /**
+     * Retrieve fee from controller and calculate total protocol fee and send from SetToken to protocol recipient
+     * @return uint256                  Amount of receive token taken as protocol fee
+     */
+    function _accrueProtocolFee(ISetToken _setToken, address _token, uint256 _quantity) internal returns (uint256) {
+        uint256 protocolFeeTotal = getModuleFee(BASIC_ISSUANCE_MODULE_REDEEM_FEE_INDEX, _quantity);
+        payProtocolFeeFromSetToken(_setToken, _token, protocolFeeTotal);
+        return protocolFeeTotal;
     }
 }

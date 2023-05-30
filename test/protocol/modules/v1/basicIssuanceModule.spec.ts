@@ -19,7 +19,7 @@ import { SystemFixture } from "@utils/fixtures";
 
 const expect = getWaffleExpect();
 
-describe("BasicIssuanceModule @forked-mainnet", () => {
+describe("BasicIssuanceModule [ @forked-mainnet ]", () => {
   let owner: Account;
   let recipient: Account;
   let deployer: DeployHelper;
@@ -399,6 +399,7 @@ describe("BasicIssuanceModule @forked-mainnet", () => {
     let subjectCaller: Account;
 
     let preIssueHook: Address;
+    let feePercentage: BigNumber;
 
     context("when the components are WBTC and WETH", async () => {
       beforeEach(async () => {
@@ -571,6 +572,106 @@ describe("BasicIssuanceModule @forked-mainnet", () => {
 
         it("should revert", async () => {
           await expect(subject()).to.be.revertedWith("Must be a valid and initialized SetToken");
+        });
+      });
+
+      describe("when set the redeem fee", async () => {
+        beforeEach(async () => {
+          feePercentage = ether(0.01);
+          setup.controller = setup.controller.connect(owner.wallet);
+          await setup.controller.addFee(
+            issuanceModule.address,
+            ZERO,
+            feePercentage
+          );
+        });
+
+        it("should send fee for all tokens", async () => {
+          const beforeSetTokenWETHBalance = await setup.weth.balanceOf(setToken.address);
+          const beforeSetTokenBTCBalance = await setup.wbtc.balanceOf(setToken.address);
+          const feeRecipientAddress = await setup.controller.feeRecipient();
+          const beforeFeeRecipientWETHBalance = await setup.weth.balanceOf(feeRecipientAddress);
+          const beforeFeeRecipientBTCBalance = await setup.wbtc.balanceOf(feeRecipientAddress);
+          expect(beforeFeeRecipientWETHBalance).to.eq(0);
+          expect(beforeFeeRecipientBTCBalance).to.eq(0);
+
+          await subject();
+
+          const redeemBalance = await setToken.balanceOf(owner.address);
+          expect(redeemBalance).to.eq(ether(1));
+          const afterFeeRecipientWETHBalance = await setup.weth.balanceOf(feeRecipientAddress);
+          const afterFeeRecipientBTCBalance = await setup.wbtc.balanceOf(feeRecipientAddress);
+
+          // Half of the total amount is redeemed. Also, fees are 1/100 of the redeem amount.
+          const expectedAfterFeeRecipientWETHBalance = beforeSetTokenWETHBalance.div(2).div(100);
+          const expectedAfterFeeRecipientBTCBalance = beforeSetTokenBTCBalance.div(2).div(100);
+          expect(afterFeeRecipientWETHBalance).to.eq(expectedAfterFeeRecipientWETHBalance);
+          expect(afterFeeRecipientBTCBalance).to.eq(expectedAfterFeeRecipientBTCBalance);
+        });
+      });
+
+      describe("when not set the redeem fee", async () => {
+        beforeEach(async () => {
+          feePercentage = BigNumber.from(0);
+          setup.controller = setup.controller.connect(owner.wallet);
+          await setup.controller.addFee(
+            issuanceModule.address,
+            ZERO,
+            feePercentage
+          );
+        });
+
+        it("should not send fees", async () => {
+          const feeRecipientAddress = await setup.controller.feeRecipient();
+          const beforeFeeRecipientWETHBalance = await setup.weth.balanceOf(feeRecipientAddress);
+          const beforeFeeRecipientBTCBalance = await setup.wbtc.balanceOf(feeRecipientAddress);
+          expect(beforeFeeRecipientWETHBalance).to.eq(0);
+          expect(beforeFeeRecipientBTCBalance).to.eq(0);
+
+          await subject();
+
+          const redeemBalance = await setToken.balanceOf(owner.address);
+          expect(redeemBalance).to.eq(ether(1));
+          const afterFeeRecipientWETHBalance = await setup.weth.balanceOf(feeRecipientAddress);
+          const afterFeeRecipientBTCBalance = await setup.wbtc.balanceOf(feeRecipientAddress);
+          expect(afterFeeRecipientWETHBalance).to.eq(0);
+          expect(afterFeeRecipientBTCBalance).to.eq(0);
+        });
+      });
+
+      describe("When zero is set after setting the fees once", async () => {
+        beforeEach(async () => {
+          feePercentage = ether(0.01);
+          setup.controller = setup.controller.connect(owner.wallet);
+          await setup.controller.addFee(
+            issuanceModule.address,
+            ZERO,
+            feePercentage
+          );
+          feePercentage = BigNumber.from(0);
+          setup.controller = setup.controller.connect(owner.wallet);
+          await setup.controller.editFee(
+            issuanceModule.address,
+            ZERO,
+            feePercentage
+          );
+        });
+
+        it("should not send fees", async () => {
+          const feeRecipientAddress = await setup.controller.feeRecipient();
+          const beforeFeeRecipientWETHBalance = await setup.weth.balanceOf(feeRecipientAddress);
+          const beforeFeeRecipientBTCBalance = await setup.wbtc.balanceOf(feeRecipientAddress);
+          expect(beforeFeeRecipientWETHBalance).to.eq(0);
+          expect(beforeFeeRecipientBTCBalance).to.eq(0);
+
+          await subject();
+
+          const redeemBalance = await setToken.balanceOf(owner.address);
+          expect(redeemBalance).to.eq(ether(1));
+          const afterFeeRecipientWETHBalance = await setup.weth.balanceOf(feeRecipientAddress);
+          const afterFeeRecipientBTCBalance = await setup.wbtc.balanceOf(feeRecipientAddress);
+          expect(afterFeeRecipientWETHBalance).to.eq(0);
+          expect(afterFeeRecipientBTCBalance).to.eq(0);
         });
       });
     });
