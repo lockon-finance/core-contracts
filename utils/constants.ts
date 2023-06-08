@@ -23,6 +23,7 @@ export const TWO = Two;
 export const THREE = BigNumber.from(3);
 export const ZERO = Zero;
 export const MAX_INT_256 = "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+export const MAX_UINT_96: BigNumber = BigNumber.from(2).pow(96).sub(1);
 export const MIN_INT_256 = "-0x8000000000000000000000000000000000000000000000000000000000000000";
 export const ONE_DAY_IN_SECONDS = BigNumber.from(60 * 60 * 24);
 export const ONE_HOUR_IN_SECONDS = BigNumber.from(60 * 60);

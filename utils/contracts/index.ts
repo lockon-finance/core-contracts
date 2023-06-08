@@ -138,3 +138,5 @@ export { ZeroExApiAdapter } from "../../typechain/ZeroExApiAdapter";
 export { ZeroExMock } from "../../typechain/ZeroExMock";
 export { Pausable } from "../../typechain/Pausable";
 export { Operator } from "../../typechain/Operator";
+export { ExchangeIssuanceZeroEx } from "../../typechain/ExchangeIssuanceZeroEx";
+export { ZeroExExchangeProxyMock } from "../../typechain/ZeroExExchangeProxyMock";

@@ -12,7 +12,8 @@ import {
   UniswapFixture,
   YearnFixture,
   UniswapV3Fixture,
-  PerpV2Fixture
+  PerpV2Fixture,
+  SetFixture,
 } from "../fixtures";
 import { Blockchain, ProtocolUtils } from "../common";
 
@@ -30,6 +31,7 @@ export const getUniswapFixture = (ownerAddress: Address) => new UniswapFixture(p
 export const getYearnFixture = (ownerAddress: Address) => new YearnFixture(provider, ownerAddress);
 export const getUniswapV3Fixture = (ownerAddress: Address) => new UniswapV3Fixture(provider, ownerAddress);
 export const getPerpV2Fixture = (ownerAddress: Address) => new PerpV2Fixture(provider, ownerAddress);
+export const getSetFixture = (ownerAddress: Address) => new SetFixture(provider, ownerAddress);
 
 export { ForkedTokens } from "./types";
 
@@ -48,7 +50,8 @@ export {
   getWaffleExpect,
   increaseTimeAsync,
   mineBlockAsync,
-  cacheBeforeEach
+  cacheBeforeEach,
+  getTxFee
 } from "./testingUtils";
 export {
   getRandomAddress
