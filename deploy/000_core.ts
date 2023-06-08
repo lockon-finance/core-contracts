@@ -51,6 +51,12 @@ const func: DeployFunction = async (hre: HardhatRuntimeEnvironment) => {
     skipIfAlreadyDeployed: true,
   });
 
+  await deployAndLog("ExchangeIssuanceZeroEx", {
+    from: deployer,
+    args: [dependencies.WETH[chainId], deployedController.address, dependencies.ZERO_EX_EXCHANGE[chainId]],
+    skipIfAlreadyDeployed: true,
+  });
+
   const controller = await ethers.getContractAt("Controller", deployedController.address);
   const isInitialized = await controller.isInitialized();
   if (!isInitialized) {

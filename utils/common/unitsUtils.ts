@@ -20,3 +20,9 @@ export const usdc = (amount: number): BigNumber => {
   const weiString = 1000000 * amount;
   return BigNumber.from(weiString);
 };
+
+export const wbtc = (amount: number): BigNumber => {
+  return ethers.utils.parseUnits(amount.toString(), 8);
+};
+
+export const UnitsUtils = { usdc, wbtc, ether, gWei };

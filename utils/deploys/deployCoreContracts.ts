@@ -7,7 +7,8 @@ import {
   SetToken,
   SetTokenCreator,
   SetValuer,
-  Operator
+  Operator,
+  ExchangeIssuanceZeroEx
 } from "./../contracts";
 
 import { Address } from "./../types";
@@ -19,6 +20,7 @@ import { SetToken__factory } from "../../typechain/factories/SetToken__factory";
 import { SetTokenCreator__factory } from "../../typechain/factories/SetTokenCreator__factory";
 import { SetValuer__factory } from "../../typechain/factories/SetValuer__factory";
 import { Operator__factory } from "../../typechain/factories/Operator__factory";
+import { ExchangeIssuanceZeroEx__factory } from "../../typechain/factories/ExchangeIssuanceZeroEx__factory";
 
 export default class DeployCoreContracts {
   private _deployerSigner: Signer;
@@ -103,5 +105,13 @@ export default class DeployCoreContracts {
 
   public async deployOperator(): Promise<Operator> {
     return await new Operator__factory(this._deployerSigner).deploy();
+  }
+
+  public async deployExchangeIssuanceZeroEx(
+    wethAddress: Address,
+    controllerAddress: Address,
+    swapTargetAddress: Address
+  ): Promise<ExchangeIssuanceZeroEx> {
+    return await new ExchangeIssuanceZeroEx__factory(this._deployerSigner).deploy(wethAddress, controllerAddress,swapTargetAddress);
   }
 }

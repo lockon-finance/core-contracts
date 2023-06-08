@@ -9,6 +9,7 @@ import DeployAdapters from "./deployAdapters";
 import DeployViewers from "./deployViewers";
 import DeployProduct from "./deployProduct";
 import DeployOracles from "./deployOracles";
+import DeploySetV2 from "./deploySetV2";
 
 export default class DeployHelper {
   public libraries: DeployLibraries;
@@ -20,6 +21,7 @@ export default class DeployHelper {
   public viewers: DeployViewers;
   public product: DeployProduct;
   public oracles: DeployOracles;
+  public setV2: DeploySetV2;
 
   constructor(deployerSigner: Signer) {
     this.libraries = new DeployLibraries(deployerSigner);
@@ -31,5 +33,6 @@ export default class DeployHelper {
     this.viewers = new DeployViewers(deployerSigner);
     this.product = new DeployProduct(deployerSigner);
     this.oracles = new DeployOracles(deployerSigner);
+    this.setV2 = new DeploySetV2(deployerSigner);
   }
 }

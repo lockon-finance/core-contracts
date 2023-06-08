@@ -5,7 +5,7 @@ chai.use(solidity);
 
 // Use HARDHAT version of providers
 import { ethers } from "hardhat";
-import { BigNumber, providers } from "ethers";
+import { BigNumber, providers, ContractTransaction } from "ethers";
 import { Blockchain } from "../common";
 
 const provider = ethers.provider;
@@ -92,4 +92,12 @@ async function sendJSONRpcRequestAsync(
     method,
     params,
   );
+}
+
+export async function getTxFee(tx: ContractTransaction) {
+  const gasPrice = tx.gasPrice;
+  const receipt = await tx.wait();
+  const gasUsed = receipt.cumulativeGasUsed;
+  const transactionFee = gasPrice ? gasPrice.mul(gasUsed) : BigNumber.from(0);
+  return transactionFee;
 }
