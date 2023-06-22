@@ -114,6 +114,55 @@ describe("ExchangeIssuanceZeroEx [ @forked-mainnet ]", async () => {
       const swapTarget = await exchangeIssuanceContract.swapTarget();
       expect(swapTarget).to.eq(subjectSwapTarget);
     });
+
+    context("When all arguments are set to the zero address", async () => {
+      beforeEach(async () => {
+        subjectWethAddress = ADDRESS_ZERO;
+        subjectControllerAddress = ADDRESS_ZERO;
+        subjectSwapTarget = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("ExchangeIssuance: _weth not set");
+      });
+    });
+
+    context("When the argument of weth is set to the zero address", async () => {
+      beforeEach(async () => {
+        subjectWethAddress = ADDRESS_ZERO;
+        subjectControllerAddress = setV2Setup.controller.address;
+        subjectSwapTarget = zeroExMock.address;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("ExchangeIssuance: _weth not set");
+      });
+    });
+
+
+    context("When the argument of controller is set to the zero address", async () => {
+      beforeEach(async () => {
+        subjectWethAddress = weth.address;
+        subjectControllerAddress = ADDRESS_ZERO;
+        subjectSwapTarget = zeroExMock.address;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("ExchangeIssuance: _setController not set");
+      });
+    });
+
+    context("When the argument of swap target is set to the zero address", async () => {
+      beforeEach(async () => {
+        subjectWethAddress = weth.address;
+        subjectControllerAddress = setV2Setup.controller.address;
+        subjectSwapTarget = ADDRESS_ZERO;
+      });
+
+      it("should revert", async () => {
+        await expect(subject()).to.be.revertedWith("ExchangeIssuance: _swapTarget not set");
+      });
+    });
   });
 
   context("when exchange issuance is deployed", async () => {
