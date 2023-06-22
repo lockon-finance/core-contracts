@@ -37,11 +37,6 @@ contract ExchangeIssuanceZeroEx is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeERC20 for ISetToken;
 
-    struct IssuanceModuleData {
-        bool isAllowed;
-        bool isDebtIssuanceModule;
-    }
-
     /* ============ Constants ============== */
 
     // Placeholder address to identify ETH where it is treated as if it was an ERC20 token
@@ -85,6 +80,10 @@ contract ExchangeIssuanceZeroEx is Ownable, ReentrancyGuard {
     )
         public
     {
+        require(_weth != address(0), "ExchangeIssuance: _weth not set");
+        require(address(_setController) != address(0), "ExchangeIssuance: _setController not set");
+        require(_swapTarget != address(0), "ExchangeIssuance: _swapTarget not set");
+
         setController = _setController;
 
         WETH = _weth;
@@ -174,7 +173,7 @@ contract ExchangeIssuanceZeroEx is Ownable, ReentrancyGuard {
         IERC20 _inputToken,
         uint256 _amountSetToken,
         uint256 _maxAmountInputToken,
-        bytes[] memory _componentQuotes,
+        bytes[] calldata _componentQuotes,
         address _issuanceModule,
         bool _isDebtIssuance
     )
@@ -212,7 +211,7 @@ contract ExchangeIssuanceZeroEx is Ownable, ReentrancyGuard {
     function issueExactSetFromETH(
         ISetToken _setToken,
         uint256 _amountSetToken,
-        bytes[] memory _componentQuotes,
+        bytes[] calldata _componentQuotes,
         address _issuanceModule,
         bool _isDebtIssuance
     )
@@ -261,7 +260,7 @@ contract ExchangeIssuanceZeroEx is Ownable, ReentrancyGuard {
         IERC20 _outputToken,
         uint256 _amountSetToken,
         uint256 _minOutputReceive,
-        bytes[] memory _componentQuotes,
+        bytes[] calldata _componentQuotes,
         address _issuanceModule,
         bool _isDebtIssuance
     )
@@ -302,7 +301,7 @@ contract ExchangeIssuanceZeroEx is Ownable, ReentrancyGuard {
         ISetToken _setToken,
         uint256 _amountSetToken,
         uint256 _minEthReceive,
-        bytes[] memory _componentQuotes,
+        bytes[] calldata _componentQuotes,
         address _issuanceModule,
         bool _isDebtIssuance
     )
@@ -354,7 +353,7 @@ contract ExchangeIssuanceZeroEx is Ownable, ReentrancyGuard {
     function _buyComponentsForInputToken(
         ISetToken _setToken,
         uint256 _amountSetToken,
-        bytes[] memory _quotes,
+        bytes[] calldata _quotes,
         IERC20 _inputToken,
         address _issuanceModule,
         bool _isDebtIssuance
@@ -400,7 +399,7 @@ contract ExchangeIssuanceZeroEx is Ownable, ReentrancyGuard {
      *
      * @return totalOutputTokenBought  Total amount of output token received after liquidating all SetToken components
      */
-    function _sellComponentsForOutputToken(ISetToken _setToken, uint256 _amountSetToken, bytes[] memory _swaps, IERC20 _outputToken, address _issuanceModule, bool _isDebtIssuance)
+    function _sellComponentsForOutputToken(ISetToken _setToken, uint256 _amountSetToken, bytes[] calldata _swaps, IERC20 _outputToken, address _issuanceModule, bool _isDebtIssuance)
         internal
         returns (uint256 totalOutputTokenBought)
     {
@@ -437,12 +436,11 @@ contract ExchangeIssuanceZeroEx is Ownable, ReentrancyGuard {
      *
      */
     function _fillQuote(
-        bytes memory _quote
+        bytes calldata _quote
     )
         internal
-        
     {
-
+        require(_quote.length > 0, "ExchangeIssuance: _quote not set");
         (bool success, bytes memory returndata) = swapTarget.call(_quote);
 
         // Forwarding errors including new custom errors
