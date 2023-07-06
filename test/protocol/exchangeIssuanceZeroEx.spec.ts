@@ -590,6 +590,17 @@ describe("ExchangeIssuanceZeroEx [ @forked-mainnet ]", async () => {
             });
           });
 
+          context("when a position quotes is not set", async () => {
+            beforeEach(async () => {
+              subjectPositionSwapQuotes = ["0x"];
+            });
+            it("should revert", async () => {
+              await expect(subject()).to.be.revertedWith(
+                "ExchangeIssuance: _quote not set",
+              );
+            });
+          });
+
           context("when a position quote is missing", async () => {
             beforeEach(async () => {
               subjectPositionSwapQuotes = [subjectPositionSwapQuotes[0]];
@@ -601,7 +612,7 @@ describe("ExchangeIssuanceZeroEx [ @forked-mainnet ]", async () => {
 
           context("when invalid set token amount is requested", async () => {
             beforeEach(async () => {
-              subjectAmountSetTokenWei = ether(0);
+              subjectAmountSetTokenWei = ZERO;
             });
             it("should revert", async () => {
               await expect(subject()).to.be.revertedWith("Issue quantity must be > 0");
@@ -932,6 +943,17 @@ describe("ExchangeIssuanceZeroEx [ @forked-mainnet ]", async () => {
             it("should revert", async () => {
               await expect(subject()).to.be.revertedWith(
                 "ExchangeIssuance: INVALID ISSUANCE MODULE",
+              );
+            });
+          });
+
+          context("when a position quote is not set", async () => {
+            beforeEach(async () => {
+              subjectPositionSwapQuotes = ["0x"];
+            });
+            it("should revert", async () => {
+              await expect(subject()).to.be.revertedWith(
+                "ExchangeIssuance: _quote not set",
               );
             });
           });
