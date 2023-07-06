@@ -72,6 +72,16 @@ describe("Operator [ @forked-mainnet ]", () => {
           expect(afterAliceIsOperator).to.eq(true);
         });
       });
+
+      describe("When adding operator that exist", async () => {
+        beforeEach(setDefaultOperator);
+        it("should revert", async () => {
+          const bobIsOperator = await operator.isOperator(bob.address);
+          expect(bobIsOperator).to.eq(true);
+
+          await expect(subject(owner, bob.address)).to.be.revertedWith("alreadyExists");
+        });
+      });
     });
 
     describe("When the caller is not the owner", async () => {
