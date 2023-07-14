@@ -45,7 +45,8 @@ To use console.log during Solidity development, follow the [guides](https://hard
 
 ## Security
 
-### TODO: Independent Audits
+### Independent Audits
+* [Blaze.Security](https://github.com/blaize-security/blaize-security-audits/blob/main/l/lockon-finance/Lockon-audit-report-[7-July-2023].pdf)
 
 ### Code Coverage
 
