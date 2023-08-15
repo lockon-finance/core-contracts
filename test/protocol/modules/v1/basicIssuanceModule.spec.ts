@@ -3,7 +3,7 @@ import { BigNumber } from "ethers";
 
 import { Address } from "@utils/types";
 import { Account } from "@utils/test/types";
-import { ADDRESS_ZERO, ZERO, ONE } from "@utils/constants";
+import { ADDRESS_ZERO, ZERO, ONE, PRECISE_UNIT } from "@utils/constants";
 import { BasicIssuanceModule, ManagerIssuanceHookMock, SetToken } from "@utils/contracts";
 import DeployHelper from "@utils/deploys";
 import { bitcoin, ether } from "@utils/index";
@@ -579,11 +579,7 @@ describe("BasicIssuanceModule [ @forked-mainnet ]", () => {
         beforeEach(async () => {
           feePercentage = ether(0.01);
           setup.controller = setup.controller.connect(owner.wallet);
-          await setup.controller.addFee(
-            issuanceModule.address,
-            ZERO,
-            feePercentage
-          );
+          await setup.controller.addFee(issuanceModule.address, ZERO, feePercentage);
         });
 
         it("should send fee for all tokens", async () => {
@@ -594,8 +590,19 @@ describe("BasicIssuanceModule [ @forked-mainnet ]", () => {
           const beforeFeeRecipientBTCBalance = await setup.wbtc.balanceOf(feeRecipientAddress);
           expect(beforeFeeRecipientWETHBalance).to.eq(0);
           expect(beforeFeeRecipientBTCBalance).to.eq(0);
+          const beforeRecipientWETHBalance = await setup.weth.balanceOf(recipient.address);
+          const beforeRecipientBTCBalance = await setup.wbtc.balanceOf(recipient.address);
+          expect(beforeRecipientWETHBalance).to.eq(0);
+          expect(beforeRecipientBTCBalance).to.eq(0);
 
           await subject();
+
+          const afterSetTokenWETHBalance = await setup.weth.balanceOf(setToken.address);
+          const afterSetTokenBTCBalance = await setup.wbtc.balanceOf(setToken.address);
+          const expectedAfterSetTokenWETHBalance = beforeSetTokenWETHBalance.div(2);
+          const expectedAfterSetTokenBTCBalance = beforeSetTokenBTCBalance.div(2);
+          expect(afterSetTokenWETHBalance).to.eq(expectedAfterSetTokenWETHBalance);
+          expect(afterSetTokenBTCBalance).to.eq(expectedAfterSetTokenBTCBalance);
 
           const redeemBalance = await setToken.balanceOf(owner.address);
           expect(redeemBalance).to.eq(ether(1));
@@ -607,6 +614,19 @@ describe("BasicIssuanceModule [ @forked-mainnet ]", () => {
           const expectedAfterFeeRecipientBTCBalance = beforeSetTokenBTCBalance.div(2).div(100);
           expect(afterFeeRecipientWETHBalance).to.eq(expectedAfterFeeRecipientWETHBalance);
           expect(afterFeeRecipientBTCBalance).to.eq(expectedAfterFeeRecipientBTCBalance);
+
+          const afterRecipientWETHBalance = await setup.weth.balanceOf(recipient.address);
+          const afterRecipientBTCBalance = await setup.wbtc.balanceOf(recipient.address);
+          const receiveRecipientWETH = afterRecipientWETHBalance.sub(beforeRecipientWETHBalance);
+          const receiveRecipientBTC = afterRecipientBTCBalance.sub(beforeRecipientBTCBalance);
+          const expectReceiveRecipientWETH = beforeSetTokenWETHBalance
+            .sub(afterSetTokenWETHBalance)
+            .sub(afterFeeRecipientWETHBalance);
+          const expectReceiveRecipientBTC = beforeSetTokenBTCBalance
+            .sub(afterSetTokenBTCBalance)
+            .sub(afterFeeRecipientBTCBalance);
+          expect(receiveRecipientWETH).to.eq(expectReceiveRecipientWETH);
+          expect(receiveRecipientBTC).to.eq(expectReceiveRecipientBTC);
         });
       });
 
@@ -614,11 +634,7 @@ describe("BasicIssuanceModule [ @forked-mainnet ]", () => {
         beforeEach(async () => {
           feePercentage = BigNumber.from(0);
           setup.controller = setup.controller.connect(owner.wallet);
-          await setup.controller.addFee(
-            issuanceModule.address,
-            ZERO,
-            feePercentage
-          );
+          await setup.controller.addFee(issuanceModule.address, ZERO, feePercentage);
         });
 
         it("should not send fees", async () => {
@@ -643,18 +659,10 @@ describe("BasicIssuanceModule [ @forked-mainnet ]", () => {
         beforeEach(async () => {
           feePercentage = ether(0.01);
           setup.controller = setup.controller.connect(owner.wallet);
-          await setup.controller.addFee(
-            issuanceModule.address,
-            ZERO,
-            feePercentage
-          );
+          await setup.controller.addFee(issuanceModule.address, ZERO, feePercentage);
           feePercentage = BigNumber.from(0);
           setup.controller = setup.controller.connect(owner.wallet);
-          await setup.controller.editFee(
-            issuanceModule.address,
-            ZERO,
-            feePercentage
-          );
+          await setup.controller.editFee(issuanceModule.address, ZERO, feePercentage);
         });
 
         it("should not send fees", async () => {
@@ -759,6 +767,132 @@ describe("BasicIssuanceModule [ @forked-mainnet ]", () => {
           await expect(issuanceModule.connect(recipient.wallet).unpause()).to.be.revertedWith(
             "Ownable: caller is not the owner",
           );
+        });
+      });
+    });
+  });
+
+  describe("#getRequiredComponentUnitsForRedeem", async () => {
+    let setToken: SetToken;
+    let feePercentage: BigNumber;
+    let subjectSetToken: Address;
+    let subjectRedeemQuantity: BigNumber;
+
+    beforeEach(async () => {
+      setToken = await setup.createSetToken(
+        [setup.weth.address, setup.wbtc.address],
+        [ether(1), bitcoin(2)],
+        [issuanceModule.address],
+      );
+      await issuanceModule.initialize(setToken.address, ADDRESS_ZERO);
+      feePercentage = ether(0.01);
+      setup.controller = setup.controller.connect(owner.wallet);
+      await setup.controller.addFee(issuanceModule.address, ZERO, feePercentage);
+
+      subjectSetToken = setToken.address;
+      subjectRedeemQuantity = ether(1);
+    });
+
+    context("When the argument of a valid setToken", async () => {
+      context("When SetToken has not an external position", async () => {
+        it("should be returned with the unit subtracted from the fee", async () => {
+          const componentAddressAndUnits = await issuanceModule.getRequiredComponentUnitsForRedeem(
+            subjectSetToken,
+            subjectRedeemQuantity,
+          );
+          const componentAddresses = componentAddressAndUnits[0];
+          const componentUnits = componentAddressAndUnits[1];
+          const componentFees = componentAddressAndUnits[2];
+          const arrayIndexETH = componentAddresses.indexOf(setup.weth.address);
+          const arrayIndexBTC = componentAddresses.indexOf(setup.wbtc.address);
+          const expectComponentFeeWETH = ether(1).mul(feePercentage).div(PRECISE_UNIT);
+          const expectComponentFeeBTC = bitcoin(2).mul(feePercentage).div(PRECISE_UNIT);
+          const expectComponentWETH = ether(1).sub(expectComponentFeeWETH);
+          const expectComponentBTC = bitcoin(2).sub(expectComponentFeeBTC);
+          expect(componentUnits[arrayIndexETH]).to.eq(expectComponentWETH);
+          expect(componentUnits[arrayIndexBTC]).to.eq(expectComponentBTC);
+          expect(componentFees[arrayIndexETH]).to.eq(expectComponentFeeWETH);
+          expect(componentFees[arrayIndexBTC]).to.eq(expectComponentFeeBTC);
+        });
+      });
+
+      context("When the fee is changed", async () => {
+        it("should paused status be false", async () => {
+          // before the change of fee
+          const componentAddressAndUnits = await issuanceModule.getRequiredComponentUnitsForRedeem(
+            subjectSetToken,
+            subjectRedeemQuantity,
+          );
+          const componentAddresses = componentAddressAndUnits[0];
+          const componentUnits = componentAddressAndUnits[1];
+          const componentFees = componentAddressAndUnits[2];
+          const arrayIndexETH = componentAddresses.indexOf(setup.weth.address);
+          const arrayIndexBTC = componentAddresses.indexOf(setup.wbtc.address);
+          const expectComponentFeeWETH = ether(1).mul(feePercentage).div(PRECISE_UNIT);
+          const expectComponentFeeBTC = bitcoin(2).mul(feePercentage).div(PRECISE_UNIT);
+          const expectComponentWETH = ether(1).sub(expectComponentFeeWETH);
+          const expectComponentBTC = bitcoin(2).sub(expectComponentFeeBTC);
+          expect(componentUnits[arrayIndexETH]).to.eq(expectComponentWETH);
+          expect(componentUnits[arrayIndexBTC]).to.eq(expectComponentBTC);
+          expect(componentFees[arrayIndexETH]).to.eq(expectComponentFeeWETH);
+          expect(componentFees[arrayIndexBTC]).to.eq(expectComponentFeeBTC);
+          // after the change of fee
+          const updateFeePercentage = ether(0.05);
+          setup.controller = setup.controller.connect(owner.wallet);
+          await setup.controller.editFee(issuanceModule.address, ZERO, updateFeePercentage);
+          const updateComponentAddressAndUnits = await issuanceModule.getRequiredComponentUnitsForRedeem(
+            subjectSetToken,
+            subjectRedeemQuantity,
+          );
+          const updateComponentUnits = updateComponentAddressAndUnits[1];
+          const updateComponentFees = updateComponentAddressAndUnits[2];
+          const expectUpdateComponentFeeWETH = ether(1).mul(updateFeePercentage).div(PRECISE_UNIT);
+          const expectUpdateComponentFeeBTC = bitcoin(2).mul(updateFeePercentage).div(PRECISE_UNIT);
+          const expectUpdateComponentWETH = ether(1).sub(expectUpdateComponentFeeWETH);
+          const expectUpdateComponentBTC = bitcoin(2).sub(expectUpdateComponentFeeBTC);
+          expect(updateComponentUnits[arrayIndexETH]).to.eq(expectUpdateComponentWETH);
+          expect(updateComponentUnits[arrayIndexBTC]).to.eq(expectUpdateComponentBTC);
+          expect(updateComponentFees[arrayIndexETH]).to.eq(expectUpdateComponentFeeWETH);
+          expect(updateComponentFees[arrayIndexBTC]).to.eq(expectUpdateComponentFeeBTC);
+        });
+      });
+
+      context("When SetToken has an external position", async () => {
+        beforeEach(async () => {
+          await setup.controller.addModule(owner.address);
+          await setToken.addModule(owner.address);
+          await setToken.initializeModule();
+
+          const retrievedPosition = (await setToken.getPositions())[0];
+
+          await setToken.addExternalPositionModule(
+            retrievedPosition.component,
+            retrievedPosition.module,
+          );
+          await setToken.editExternalPositionUnit(
+            retrievedPosition.component,
+            retrievedPosition.module,
+            retrievedPosition.unit,
+          );
+        });
+
+        it("should revert", async () => {
+          await expect(
+            issuanceModule.getRequiredComponentUnitsForRedeem(
+              setToken.address,
+              subjectRedeemQuantity,
+            ),
+          ).to.be.revertedWith("Only default positions are supported");
+        });
+      });
+    });
+
+    context("When the argument of a invalid setToken", async () => {
+      context("When not paused", async () => {
+        it("should revert", async () => {
+          await expect(
+            issuanceModule.getRequiredComponentUnitsForRedeem(ADDRESS_ZERO, subjectRedeemQuantity),
+          ).to.be.revertedWith("Must be a valid and initialized SetToken");
         });
       });
     });

@@ -148,23 +148,18 @@ contract BasicIssuanceModule is ModuleBase, ReentrancyGuard, Pausable {
         _setToken.burn(msg.sender, _quantity);
 
         // For each position, invoke the SetToken to transfer the tokens to the user
-        address[] memory components = _setToken.getComponents();
+        (address[] memory components, uint256[] memory transferQuantities, uint256[] memory fees) = getRequiredComponentUnitsForRedeem(_setToken, _quantity);
+
         for (uint256 i = 0; i < components.length; i++) {
             address component = components[i];
-            require(!_setToken.hasExternalPosition(component), "Only default positions are supported");
-
-            uint256 unit = _setToken.getDefaultPositionRealUnit(component).toUint256();
-
-            // Use preciseMul to round down to ensure overcollateration when small redeem quantities are provided
-            uint256 componentQuantity = _quantity.preciseMul(unit);
-
-            _accrueProtocolFee(_setToken, component, componentQuantity);
+            uint256 transferQuantity = transferQuantities[i];
+            payProtocolFeeFromSetToken(_setToken, component, fees[i]);
 
             // Instruct the SetToken to transfer the component to the user
             _setToken.strictInvokeTransfer(
                 component,
                 _to,
-                componentQuantity
+                transferQuantity
             );
         }
 
@@ -231,6 +226,41 @@ contract BasicIssuanceModule is ModuleBase, ReentrancyGuard, Pausable {
         return (components, notionalUnits);
     }
 
+    /**
+     * Retrieves the addresses and units required to redeem a particular quantity of SetToken.
+     *
+     * @param _setToken             Instance of the SetToken to redeem
+     * @param _quantity             Quantity of SetToken to redeem
+     * @return address[]            List of component addresses
+     * @return uint256[]            List of component units required to redeem the quantity of SetTokens
+     * @return uint256[]            List of component protocol fees
+     */
+    function getRequiredComponentUnitsForRedeem(
+        ISetToken _setToken,
+        uint256 _quantity
+    )
+        public
+        view
+        onlyValidAndInitializedSet(_setToken)
+        returns (address[] memory, uint256[] memory, uint256[] memory)
+    {
+        address[] memory components = _setToken.getComponents();
+
+        uint256[] memory notionalUnits = new uint256[](components.length);
+        uint256[] memory protocolFees = new uint256[](components.length);
+
+        for (uint256 i = 0; i < components.length; i++) {
+            require(!_setToken.hasExternalPosition(components[i]), "Only default positions are supported");
+
+            uint256 componentQuantity = _setToken.getDefaultPositionRealUnit(components[i]).toUint256().preciseMul(_quantity);
+            uint256 protocolFee = getModuleFee(BASIC_ISSUANCE_MODULE_REDEEM_FEE_INDEX, componentQuantity);
+            notionalUnits[i] = componentQuantity.sub(protocolFee);
+            protocolFees[i] = protocolFee;
+        }
+
+        return (components, notionalUnits, protocolFees);
+    }
+
     /* ============ Internal Functions ============ */
 
     /**
@@ -253,15 +283,5 @@ contract BasicIssuanceModule is ModuleBase, ReentrancyGuard, Pausable {
         }
 
         return address(0);
-    }
-
-    /**
-     * Retrieve fee from controller and calculate total protocol fee and send from SetToken to protocol recipient
-     * @return uint256                  Amount of receive token taken as protocol fee
-     */
-    function _accrueProtocolFee(ISetToken _setToken, address _token, uint256 _quantity) internal returns (uint256) {
-        uint256 protocolFeeTotal = getModuleFee(BASIC_ISSUANCE_MODULE_REDEEM_FEE_INDEX, _quantity);
-        payProtocolFeeFromSetToken(_setToken, _token, protocolFeeTotal);
-        return protocolFeeTotal;
     }
 }

@@ -3,7 +3,7 @@
 
 import "module-alias/register";
 import { Address, Account } from "@utils/types";
-import { ADDRESS_ZERO, MAX_UINT_96, MAX_UINT_256, ZERO, ONE } from "@utils/constants";
+import { ADDRESS_ZERO, MAX_UINT_96, MAX_UINT_256, ZERO, ONE, PRECISE_UNIT } from "@utils/constants";
 import { SetToken } from "@utils/contracts";
 import { ether } from "@utils/index";
 import { getSetFixture } from "@utils/test";
@@ -851,6 +851,7 @@ describe("ExchangeIssuanceZeroEx [ @forked-mainnet ]", async () => {
           let subjectPositionSwapQuotes: string[];
           let subjectIssuanceModuleAddress: Address;
           let subjectIsDebtIssuance: boolean;
+          let subjectFeeRecipient: Address;
           let components: Address[];
           let positions: BigNumber[];
 
@@ -863,7 +864,7 @@ describe("ExchangeIssuanceZeroEx [ @forked-mainnet ]", async () => {
             subjectAmountSetTokenWei = UnitsUtils.ether(subjectAmountSetToken);
             subjectIssuanceModuleAddress = issuanceModuleAddress;
             subjectIsDebtIssuance = issuanceModuleAddress == setV2Setup.debtIssuanceModule.address;
-
+            subjectFeeRecipient = await setV2Setup.controller.feeRecipient();
             [components, positions] = await exchangeIssuanceZeroEx.getRequiredRedemptionComponents(
               subjectIssuanceModuleAddress,
               subjectIsDebtIssuance,
@@ -1033,8 +1034,75 @@ describe("ExchangeIssuanceZeroEx [ @forked-mainnet ]", async () => {
               const expectedWbtcBalance = initialWbtcBalance.add(subjectOutputTokenAmount);
               expect(finalWbtcBalance).to.eq(expectedWbtcBalance);
             });
+
+            it("should not receive fees", async () => {
+              const initialFeeRecipientUSDCBalance = await usdc.balanceOf(subjectFeeRecipient);
+              const initialFeeRecipientBTCBalance = await wbtc.balanceOf(subjectFeeRecipient);
+
+              await subject();
+
+              if (subjectIsDebtIssuance) return;
+
+              const finalFeeRecipientUSDCBalance = await usdc.balanceOf(subjectFeeRecipient);
+              const finalFeeRecipientBTCBalance = await wbtc.balanceOf(subjectFeeRecipient);
+              expect(finalFeeRecipientUSDCBalance).to.eq(initialFeeRecipientUSDCBalance);
+              expect(finalFeeRecipientBTCBalance).to.eq(initialFeeRecipientBTCBalance);
+            });
+          });
+
+          context("when the fee is 0.01%", async () => {
+            let subjectFeePercentage: BigNumber;
+
+            beforeEach(async () => {
+              subjectFeePercentage = ether(0.01);
+              await setV2Setup.controller.addFee(
+                setV2Setup.issuanceModule.address,
+                ZERO,
+                subjectFeePercentage,
+              );
+              [
+                components,
+                positions,
+              ] = await exchangeIssuanceZeroEx.getRequiredRedemptionComponents(
+                subjectIssuanceModuleAddress,
+                subjectIsDebtIssuance,
+                subjectSetToken.address,
+                subjectAmountSetTokenWei,
+              );
+              subjectPositionSwapQuotes = positions.map((position: any, index: number) => {
+                return getUniswapV2Quote(
+                  components[index],
+                  position,
+                  subjectOutputToken.address,
+                  subjectOutputTokenAmount.div(2),
+                );
+              });
+            });
+
+            it("should redeem the correct number of set tokens", async () => {
+              const initialBalanceOfSet = await subjectSetToken.balanceOf(subjectCaller.address);
+              await subject();
+              const finalSetBalance = await subjectSetToken.balanceOf(subjectCaller.address);
+              const expectedSetBalance = initialBalanceOfSet.sub(subjectAmountSetTokenWei);
+              expect(finalSetBalance).to.eq(expectedSetBalance);
+            });
+
+            it("should receive fees", async () => {
+              const initialFeeRecipientUSDCBalance = await usdc.balanceOf(subjectFeeRecipient);
+              const initialFeeRecipientBTCBalance = await wbtc.balanceOf(subjectFeeRecipient);
+
+              await subject();
+
+              if (subjectIsDebtIssuance) return;
+
+              const finalFeeRecipientUSDCBalance = await usdc.balanceOf(subjectFeeRecipient);
+              const finalFeeRecipientBTCBalance = await wbtc.balanceOf(subjectFeeRecipient);
+              expect(finalFeeRecipientUSDCBalance).to.above(initialFeeRecipientUSDCBalance);
+              expect(finalFeeRecipientBTCBalance).to.above(initialFeeRecipientBTCBalance);
+            });
           });
         });
+
         describe("#redeemExactSetForEth", async () => {
           let subjectWethAmount: BigNumber;
           let subjectAmountSetToken: number;
@@ -1164,6 +1232,56 @@ describe("ExchangeIssuanceZeroEx [ @forked-mainnet ]", async () => {
               await expect(subject()).to.be.revertedWith("ExchangeIssuance: OVERSOLD COMPONENT");
             });
           });
+        });
+      });
+    });
+
+    describe("#getRequiredRedemptionComponents", async () => {
+      let subjectAmountSetToken: number;
+      let subjectAmountSetTokenWei: BigNumber;
+      let subjectSetToken: SetToken;
+      let subjectIssuanceModuleAddress: Address;
+      let subjectIsDebtIssuance: boolean;
+      let feePercentage: BigNumber;
+
+      const initializeSubjectVariables = async () => {
+        subjectAmountSetToken = 1;
+        subjectAmountSetTokenWei = UnitsUtils.ether(subjectAmountSetToken);
+        subjectSetToken = setToken;
+      };
+
+      beforeEach(async () => {
+        await initializeSubjectVariables();
+        await setV2Setup.approveAndIssueSetToken(setToken, subjectAmountSetTokenWei, owner.address);
+        feePercentage = ether(0.01);
+        await setV2Setup.controller.addFee(setV2Setup.issuanceModule.address, ZERO, feePercentage);
+      });
+
+      async function subject() {
+        return await exchangeIssuanceZeroEx.getRequiredRedemptionComponents(
+          subjectIssuanceModuleAddress,
+          subjectIsDebtIssuance,
+          subjectSetToken.address,
+          subjectAmountSetTokenWei,
+        );
+      }
+
+      context("When the argument of _isDebtIssuance is false", async () => {
+        beforeEach(async () => {
+          subjectIssuanceModuleAddress = setV2Setup.issuanceModule.address;
+          subjectIsDebtIssuance = false;
+        });
+
+        it("should be a quantity reduced by the fee", async () => {
+          const componentAddressAndUnits = await subject();
+          const componentAddresses = componentAddressAndUnits[0];
+          const componentUnits = componentAddressAndUnits[1];
+          const arrayIndexUSDC = componentAddresses.indexOf(usdc.address);
+          const arrayIndexBTC = componentAddresses.indexOf(wbtc.address);
+          const expectComponentUSDC = usdcUnits.sub(usdcUnits.mul(feePercentage).div(PRECISE_UNIT));
+          const expectComponentBTC = wbtcUnits.sub(wbtcUnits.mul(feePercentage).div(PRECISE_UNIT));
+          expect(componentUnits[arrayIndexUSDC]).to.eq(expectComponentUSDC);
+          expect(componentUnits[arrayIndexBTC]).to.eq(expectComponentBTC);
         });
       });
     });

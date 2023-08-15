@@ -25,6 +25,11 @@ interface IBasicIssuanceModule {
         uint256 _quantity
     ) external view returns(address[] memory, uint256[] memory);
 
+    function getRequiredComponentUnitsForRedeem(
+        ISetToken _setToken,
+        uint256 _quantity
+    ) external view returns(address[] memory, uint256[] memory, uint256[] memory);
+
     function issue(
         ISetToken _setToken,
         uint256 _quantity,

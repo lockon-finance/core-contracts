@@ -511,12 +511,7 @@ contract ExchangeIssuanceZeroEx is Ownable, ReentrancyGuard {
             (components, positions, ) = IDebtIssuanceModule(_issuanceModule).getRequiredComponentRedemptionUnits(_setToken, _amountSetToken);
         }
         else {
-            components = _setToken.getComponents();
-            positions = new uint256[](components.length);
-            for(uint256 i = 0; i < components.length; i++) {
-                uint256 unit = uint256(_setToken.getDefaultPositionRealUnit(components[i]));
-                positions[i] = unit.preciseMul(_amountSetToken);
-            }
+            (components, positions, ) = IBasicIssuanceModule(_issuanceModule).getRequiredComponentUnitsForRedeem(_setToken, _amountSetToken);
         }
     }
 }
