@@ -57,7 +57,9 @@ contract BasicIssuanceModule is ModuleBase, ReentrancyGuard, Pausable {
         address indexed _setToken,
         address indexed _redeemer,
         address indexed _to,
-        uint256 _quantity
+        uint256 _quantity,
+        address[] _components,
+        uint256[] _fees
     );
 
     /* ============ State Variables ============ */
@@ -163,7 +165,7 @@ contract BasicIssuanceModule is ModuleBase, ReentrancyGuard, Pausable {
             );
         }
 
-        emit SetTokenRedeemed(address(_setToken), msg.sender, _to, _quantity);
+        emit SetTokenRedeemed(address(_setToken), msg.sender, _to, _quantity, components, fees);
     }
 
     /**

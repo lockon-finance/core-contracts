@@ -470,9 +470,12 @@ describe("BasicIssuanceModule [ @forked-mainnet ]", () => {
       });
 
       it("should emit the SetTokenRedeemed event", async () => {
+        const components = await setToken.getComponents();
+        const fees = components.map(() => ZERO);
+
         await expect(subject())
           .to.emit(issuanceModule, "SetTokenRedeemed")
-          .withArgs(subjectSetToken, subjectCaller.address, subjectTo, subjectRedeemQuantity);
+          .withArgs(subjectSetToken, subjectCaller.address, subjectTo, subjectRedeemQuantity, components, fees);
       });
 
       describe("when the issue quantity is extremely small", async () => {
@@ -627,6 +630,22 @@ describe("BasicIssuanceModule [ @forked-mainnet ]", () => {
             .sub(afterFeeRecipientBTCBalance);
           expect(receiveRecipientWETH).to.eq(expectReceiveRecipientWETH);
           expect(receiveRecipientBTC).to.eq(expectReceiveRecipientBTC);
+        });
+
+        it("should emit the SetTokenRedeemed event", async () => {
+          const beforeSetTokenWETHBalance = await setup.weth.balanceOf(setToken.address);
+          const beforeSetTokenBTCBalance = await setup.wbtc.balanceOf(setToken.address);
+
+          // Half of the total amount is redeemed. Also, fees are 1/100 of the redeem amount.
+          const expectedFeeWETH = beforeSetTokenWETHBalance.div(2).div(100);
+          const expectedFeeBTC = beforeSetTokenBTCBalance.div(2).div(100);
+
+          const components: string[] = await setToken.getComponents();
+          const fees = components.map(component => component === setup.weth.address ? expectedFeeWETH : expectedFeeBTC);
+
+          await expect(subject())
+            .to.emit(issuanceModule, "SetTokenRedeemed")
+            .withArgs(subjectSetToken, subjectCaller.address, subjectTo, subjectRedeemQuantity, components, fees);
         });
       });
 
