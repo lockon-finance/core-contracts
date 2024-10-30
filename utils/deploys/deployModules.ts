@@ -22,7 +22,8 @@ import {
   StreamingFeeModule,
   TradeModule,
   WrapModule,
-  WrapModuleV2
+  WrapModuleV2,
+  PositionUnitAdjusterModule
 } from "../contracts";
 import { Address } from "../types";
 
@@ -48,6 +49,7 @@ import { StreamingFeeModule__factory } from "../../typechain/factories/Streaming
 import { TradeModule__factory } from "../../typechain/factories/TradeModule__factory";
 import { WrapModule__factory } from "../../typechain/factories/WrapModule__factory";
 import { WrapModuleV2__factory } from "../../typechain/factories/WrapModuleV2__factory";
+import { PositionUnitAdjusterModule__factory } from "../../typechain/factories/PositionUnitAdjusterModule__factory";
 
 export default class DeployModules {
   private _deployerSigner: Signer;
@@ -244,6 +246,13 @@ export default class DeployModules {
       perpQuoter,
       perpMarketRegistry,
       maxPerpPositionsPerSet
+    );
+  }
+
+  public async deployPositionUnitAdjusterModule(controller: Address, operator: Address): Promise<PositionUnitAdjusterModule> {
+    return await new PositionUnitAdjusterModule__factory(this._deployerSigner).deploy(
+      controller,
+      operator,
     );
   }
 }
