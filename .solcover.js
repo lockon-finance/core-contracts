@@ -8,6 +8,9 @@ module.exports = {
     'product/AssetLimitHook.sol',
     'protocol-viewers'
   ],
+  modifierWhitelist: [
+    'nonReentrant'
+  ],
   providerOptions: {
     default_balance_ether: 100000000,
     gasLimit: 30000000,

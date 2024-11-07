@@ -367,6 +367,7 @@ describe("PositionUnitAdjusterModule [ @forked-mainnet ]", () => {
           subjectComponents = [setup.weth.address, setup.usdc.address];
           subjectRequestedUnits = [ether(3), usdc(4)];
 
+          const beforeComponents = await setToken.getComponents();
           const beforeWethPositionUnit = await setToken.getDefaultPositionRealUnit(
             setup.weth.address,
           );
@@ -376,6 +377,7 @@ describe("PositionUnitAdjusterModule [ @forked-mainnet ]", () => {
           const beforeTotalSupply = await setToken.totalSupply();
           const beforeWethBalance = await setup.weth.balanceOf(setToken.address);
           const beforeUsdcBalance = await setup.usdc.balanceOf(setToken.address);
+          expect(beforeComponents.length).to.eq(2);
           expect(beforeWethPositionUnit).to.eq(ether(1));
           expect(beforeUsdcPositionUnit).to.eq(usdc(2));
           expect(beforeTotalSupply).to.eq(ether(0));
@@ -384,6 +386,7 @@ describe("PositionUnitAdjusterModule [ @forked-mainnet ]", () => {
 
           await subject();
 
+          const afterComponents = await setToken.getComponents();
           const afterWethPositionUnit = await setToken.getDefaultPositionRealUnit(
             setup.weth.address,
           );
@@ -393,6 +396,7 @@ describe("PositionUnitAdjusterModule [ @forked-mainnet ]", () => {
           const afterTotalSupply = await setToken.totalSupply();
           const afterWethBalance = await setup.weth.balanceOf(setToken.address);
           const afterUsdcBalance = await setup.usdc.balanceOf(setToken.address);
+          expect(afterComponents.length).to.eq(2);
           expect(afterWethPositionUnit).to.eq(ether(3));
           expect(afterUsdcPositionUnit).to.eq(usdc(4));
           expect(afterTotalSupply).to.eq(ether(10));
@@ -422,6 +426,7 @@ describe("PositionUnitAdjusterModule [ @forked-mainnet ]", () => {
           subjectComponents = [setup.weth.address, setup.usdc.address, setup.wbtc.address];
           subjectRequestedUnits = [ether(3), usdc(4), wbtc(1)];
 
+          const beforeComponents = await setToken.getComponents();
           const beforeWethPositionUnit = await setToken.getDefaultPositionRealUnit(
             setup.weth.address,
           );
@@ -435,6 +440,7 @@ describe("PositionUnitAdjusterModule [ @forked-mainnet ]", () => {
           const beforeWethBalance = await setup.weth.balanceOf(setToken.address);
           const beforeUsdcBalance = await setup.usdc.balanceOf(setToken.address);
           const beforeWbtcBalance = await setup.wbtc.balanceOf(setToken.address);
+          expect(beforeComponents.length).to.eq(2);
           expect(beforeWethPositionUnit).to.eq(ether(1));
           expect(beforeUsdcPositionUnit).to.eq(usdc(2));
           expect(beforeWbtcPositionUnit).to.eq(ZERO);
@@ -444,6 +450,7 @@ describe("PositionUnitAdjusterModule [ @forked-mainnet ]", () => {
           expect(beforeWbtcBalance).to.eq(ZERO);
           await subject();
 
+          const afterComponents = await setToken.getComponents();
           const afterWethPositionUnit = await setToken.getDefaultPositionRealUnit(
             setup.weth.address,
           );
@@ -457,6 +464,7 @@ describe("PositionUnitAdjusterModule [ @forked-mainnet ]", () => {
           const afterWethBalance = await setup.weth.balanceOf(setToken.address);
           const afterUsdcBalance = await setup.usdc.balanceOf(setToken.address);
           const afterWbtcBalance = await setup.wbtc.balanceOf(setToken.address);
+          expect(afterComponents.length).to.eq(3);
           expect(afterWethPositionUnit).to.eq(ether(3));
           expect(afterUsdcPositionUnit).to.eq(usdc(4));
           expect(afterWbtcPositionUnit).to.eq(wbtc(1));
@@ -546,6 +554,23 @@ describe("PositionUnitAdjusterModule [ @forked-mainnet ]", () => {
           );
           expect(afterWethPositionUnit).to.eq(ether(3));
           expect(afterUsdcPositionUnit).to.eq(usdc(2));
+        });
+
+        it("should process the last value when duplicate components are provided", async () => {
+          subjectComponents = [setup.weth.address, setup.weth.address];
+          subjectRequestedUnits = [ether(3), ether(2)];
+
+          await subject();
+
+          const postWethUnit = await setToken.getDefaultPositionRealUnit(setup.weth.address);
+
+          expect(postWethUnit).to.eq(ether(2));
+        });
+
+        it("should revert when requested unit is less than 0", async () => {
+          subjectComponents = [setup.weth.address];
+          subjectRequestedUnits = [ether(-1)];
+          await expect(subject()).to.be.revertedWith("Requested unit is less than 0");
         });
       });
     });

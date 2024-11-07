@@ -21,6 +21,12 @@ import { PreciseUnitMath } from "../../../lib/PreciseUnitMath.sol";
  * It is used to correct discrepancies between the SetToken's unit numbers and actual balances in the following cases:
  * - When small rounding errors accumulate due to repeated trades
  * - When the component balance of the SetToken increases due to external factors
+ *
+ * Note that the module allows setting units lower than the actual balance-based unit to exclude certain tokens
+ * that should not be counted in the portfolio (e.g., airdropped).
+ *
+ * To prevent unauthorized reduction of positions, units can only be adjusted upward from their current values.
+ * Valid range: current unit <= new unit <= actual balance-based unit
  */
 contract PositionUnitAdjusterModule is ExtendModuleBase, ReentrancyGuard {
     using SafeCast for int256;
@@ -114,13 +120,18 @@ contract PositionUnitAdjusterModule is ExtendModuleBase, ReentrancyGuard {
         _totalSupply = _setToken.totalSupply();
         _componentData = new ComponentData[](componentCount);
 
+        IERC20 component;
+        int256 currentUnit;
+        int256 calculatedUnit;
+        uint256 balance;
         for (uint256 i = 0; i < componentCount; i++) {
-            IERC20 component = _components[i];
+            component = _components[i];
             require(component != IERC20(0), "Invalid component");
 
-            int256 currentUnit = _setToken.getDefaultPositionRealUnit(address(component));
-            int256 calculatedUnit = currentUnit;
-            uint256 balance = component.balanceOf(address(_setToken));
+            currentUnit = _setToken.getDefaultPositionRealUnit(address(component));
+            calculatedUnit = currentUnit;
+            balance = component.balanceOf(address(_setToken));
+
             if (_totalSupply > 0) {
                 // To correct the deviation due to repeated trades, instead of using Position.calculateDefaultEditPositionUnit, the actual asset balance is used to calculate.
                 calculatedUnit = balance.preciseDiv(_totalSupply).toInt256();
@@ -141,8 +152,11 @@ contract PositionUnitAdjusterModule is ExtendModuleBase, ReentrancyGuard {
      * If the total supply is 0, the function will revert. This is because units cannot be recalculated when the total supply is 0.
      *
      * @param _setToken Instance of the SetToken
-     * @param _components Array of components to adjust
-     * @param _requestedUnits Array of requested new unit values. If a value is 0, the calculated unit is used as the new unit for that component.
+     * @param _components Array of components to adjust. Elements must be unique (no duplicate components allowed).
+     * @param _requestedUnits Array of requested new unit values. Must be non-negative (>= 0).
+     *                        If a value is 0, the calculated unit is used as the new unit for that component.
+     *                        If a value is greater than 0, it must be greater than the current unit and
+     *                        less than or equal to the calculated unit.
      */
     function adjustDefaultPositionUnits(
         ISetToken _setToken,
@@ -164,30 +178,31 @@ contract PositionUnitAdjusterModule is ExtendModuleBase, ReentrancyGuard {
 
         require(_totalSupply > 0, "Total supply is 0");
 
-        for (uint256 i = 0; i < componentCount; i++) {
-            IERC20 component = _componentData[i].component;
-            int256 currentRealUnit = _componentData[i].currentRealUnit;
-            int256 calculatedRealUnit = _componentData[i].calculatedRealUnit;
-            int256 requestedRealUnit = _requestedUnits[i];
+        ComponentData memory eachComponentData;
+        int256 requestedRealUnit;
+        for  (uint256 i = 0; i < componentCount; i++) {
+            eachComponentData = _componentData[i];
+            requestedRealUnit = _requestedUnits[i];
 
-            if (currentRealUnit == calculatedRealUnit) {
+            if (eachComponentData.currentRealUnit == eachComponentData.calculatedRealUnit) {
                 continue;
             }
 
-            require(requestedRealUnit == 0 || requestedRealUnit > currentRealUnit, "Requested unit is less than or equal to current unit");
-            require(requestedRealUnit == 0 || requestedRealUnit <= calculatedRealUnit, "Requested unit is greater than calculated unit");
-
-            // If the requested unit is 0, the calculated unit is used as the new unit.
+            require(requestedRealUnit >= 0, "Requested unit is less than 0");
             if (requestedRealUnit == 0) {
-                requestedRealUnit = calculatedRealUnit;
+                // If the requested unit is 0, the calculated unit is used as the new unit.
+                requestedRealUnit = eachComponentData.calculatedRealUnit;
+            } else {
+                require(requestedRealUnit > eachComponentData.currentRealUnit, "Requested unit is less than or equal to current unit");
+                require(requestedRealUnit <= eachComponentData.calculatedRealUnit, "Requested unit is greater than calculated unit");
             }
-            _setToken.editDefaultPositionUnit(address(component), requestedRealUnit);
+            _setToken.editDefaultPosition(address(eachComponentData.component), requestedRealUnit.toUint256());
 
             emit DefaultPositionUnitAdjusted(
                 _setToken,
-                component,
-                _componentData[i].balance,
-                currentRealUnit,
+                eachComponentData.component,
+                eachComponentData.balance,
+                eachComponentData.currentRealUnit,
                 requestedRealUnit
             );
         }
