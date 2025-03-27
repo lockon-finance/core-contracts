@@ -28,6 +28,7 @@ import {
   CompoundBravoGovernanceAdapter,
   CompClaimAdapter,
   RgtMigrationWrapAdapter,
+  ZeroExApiV2Adapter,
 } from "../contracts";
 import { Address, Bytes } from "./../types";
 
@@ -58,6 +59,7 @@ import { SynthetixExchangeAdapter__factory } from "../../typechain/factories/Syn
 import { CompoundBravoGovernanceAdapter__factory } from "../../typechain/factories/CompoundBravoGovernanceAdapter__factory";
 import { CompClaimAdapter__factory } from "../../typechain";
 import { RgtMigrationWrapAdapter__factory } from "../../typechain/factories/RgtMigrationWrapAdapter__factory";
+import { ZeroExApiV2Adapter__factory } from "../../typechain/factories/ZeroExApiV2Adapter__factory";
 
 export default class DeployAdapters {
   private _deployerSigner: Signer;
@@ -292,6 +294,16 @@ export default class DeployAdapters {
       weth,
       steth,
       exchange,
+    );
+  }
+
+  public async deployZeroExApiV2Adapter(
+    allowanceHolderAddress: Address,
+    wethAddress: Address,
+  ): Promise<ZeroExApiV2Adapter> {
+    return await new ZeroExApiV2Adapter__factory(this._deployerSigner).deploy(
+      allowanceHolderAddress,
+      wethAddress,
     );
   }
 }

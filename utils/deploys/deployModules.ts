@@ -23,7 +23,8 @@ import {
   TradeModule,
   WrapModule,
   WrapModuleV2,
-  PositionUnitAdjusterModule
+  PositionUnitAdjusterModule,
+  ZeroExApiV2Adapter,
 } from "../contracts";
 import { Address } from "../types";
 
@@ -50,6 +51,7 @@ import { TradeModule__factory } from "../../typechain/factories/TradeModule__fac
 import { WrapModule__factory } from "../../typechain/factories/WrapModule__factory";
 import { WrapModuleV2__factory } from "../../typechain/factories/WrapModuleV2__factory";
 import { PositionUnitAdjusterModule__factory } from "../../typechain/factories/PositionUnitAdjusterModule__factory";
+import { ZeroExApiV2Adapter__factory } from "@typechain/factories/ZeroExApiV2Adapter__factory";
 
 export default class DeployModules {
   private _deployerSigner: Signer;
@@ -254,5 +256,12 @@ export default class DeployModules {
       controller,
       operator,
     );
+  }
+
+  public async deployZeroExApiV2Adapter(
+    controller: Address,
+    operator: Address,
+  ): Promise<ZeroExApiV2Adapter> {
+    return await new ZeroExApiV2Adapter__factory(this._deployerSigner).deploy(controller, operator);
   }
 }

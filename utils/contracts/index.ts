@@ -141,3 +141,4 @@ export { Operator } from "../../typechain/Operator";
 export { ExchangeIssuanceZeroEx } from "../../typechain/ExchangeIssuanceZeroEx";
 export { ZeroExExchangeProxyMock } from "../../typechain/ZeroExExchangeProxyMock";
 export { PositionUnitAdjusterModule } from "../../typechain/PositionUnitAdjusterModule";
+export { ZeroExApiV2Adapter } from "../../typechain/ZeroExApiV2Adapter";
